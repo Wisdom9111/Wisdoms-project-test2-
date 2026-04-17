@@ -13,13 +13,14 @@ const SecureViewer = lazy(() => import('./pages/Student/SecureViewer'));
 const Quiz = lazy(() => import('./pages/Student/Quiz'));
 const ResearchAssistant = lazy(() => import('./pages/Student/ResearchAssistant'));
 
-// Loading component
+// Loading component (Global Loader)
 const LoadingScreen = () => (
-  <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center">
+  <div className="fixed inset-0 z-[1000] bg-[#f8fafc] flex flex-col items-center justify-center">
     <div className="animate-spin text-[#006837] mb-4">
-      <ShieldCheck size={48} />
+      <ShieldCheck size={64} />
     </div>
-    <p className="text-[#006837] font-bold animate-pulse">Initializing Portal...</p>
+    <p className="text-[#006837] font-serif font-bold text-xl animate-pulse">MOUAU Portal Loading...</p>
+    <p className="text-gray-400 text-sm mt-2">Establishing secure connection</p>
   </div>
 );
 
@@ -36,13 +37,25 @@ const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, 
   return <>{children}</>;
 };
 
+// Auth Guard for Public Routes (prevents stuck on login page)
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) return <LoadingScreen />;
+  if (user) {
+    return <Navigate to={user.role === 'lecturer' ? '/lecturer-dashboard' : '/student-dashboard'} replace />;
+  }
+  
+  return <>{children}</>;
+};
+
 const AppContent = () => {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
         {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
         
         {/* Lecturer Routes */}
         <Route path="/lecturer-dashboard" element={

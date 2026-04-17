@@ -26,15 +26,29 @@ const Login: React.FC = () => {
         navigate('/student-dashboard');
       }
     } catch (err: any) {
+      const errorMsg = err.message || err.code;
+      alert(`Sign-In Failed: ${errorMsg}`); // Mobile/Vercel debugging requirement
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError("Invalid email or password. Please try again.");
       } else {
-        setError("An error occurred during login. Please contact support.");
+        setError(`An error occurred during login: ${errorMsg}`);
       }
     } finally {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[1000] bg-[#f8fafc] flex flex-col items-center justify-center">
+        <div className="animate-spin text-[#006837] mb-4">
+          <ShieldCheck size={64} />
+        </div>
+        <p className="text-[#006837] font-serif font-bold text-xl animate-pulse">MOUAU Portal Loading...</p>
+        <p className="text-gray-400 text-sm mt-2">Authenticating academic credentials...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white flex overflow-hidden">
