@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Book, Search, LogOut, Clock, PlayCircle, Star, FileText, Layout, Info, ChevronDown, Bell, ChevronUp, ExternalLink, Loader2, Trophy, HelpCircle, CheckCircle, X, Sparkles } from 'lucide-react';
+import { Book, Search, LogOut, Clock, Star, FileText, Layout, Info, ChevronDown, ChevronUp, ExternalLink, HelpCircle, Sparkles, Bell } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
@@ -59,20 +59,14 @@ const StudentDashboard: React.FC = () => {
       setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [user, viewLevel]);
-
-  useEffect(() => {
-    if (!user) return;
-
     const bulletinsRef = collection(db, 'notices');
-    const q = query(
+    const bulletinsQ = query(
       bulletinsRef,
       where('targetLevel', '==', viewLevel),
       orderBy('createdAt', 'desc')
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeBulletins = onSnapshot(bulletinsQ, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -82,7 +76,10 @@ const StudentDashboard: React.FC = () => {
       handleFirestoreError(error, OperationType.GET, 'notices');
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      unsubscribeBulletins();
+    };
   }, [user, viewLevel]);
 
   useEffect(() => {

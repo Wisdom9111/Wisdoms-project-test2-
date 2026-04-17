@@ -20,9 +20,7 @@ export async function analyzeMaterial(courseCode: string, courseTitle: string, b
       {
         text: `Drafting course details for a university portal at MOUAU (Michael Okpara University of Agriculture, Umudike). 
         Course: ${courseCode} - ${courseTitle}.
-        Please analyze the provided document content (if available) or the course title/code to generate:
-        1. Exactly 3 relevant key academic topics covered in this material.
-        2. A professional 2-line summary/overview of what students will learn.
+        Extract the actual headings from this text for Topics and summarize ONLY this document in 2 lines.
         Return the output as a clean JSON object.`
       }
     ];
@@ -97,9 +95,9 @@ export async function generateQuiz(courseTitle: string, materialText: string): P
       """
       
       REQUIREMENTS:
-      1. Generate EXACTLY 10 questions.
+      1. Generate EXACTLY 10 questions STRICTLY from the provided PDF content above.
       2. 5 questions must be 'objective' (Multiple Choice with 4 options).
-      3. 5 questions must be 'subjective' (Short Answer/Theory questions based on key concepts).
+      3. 5 questions must be 'subjective' (Short Answer/Theory questions based on key concepts found in the text).
       4. Ensure all questions are academically rigorous.
       5. For subjective questions, include a 'sampleAnswer' which contains the core facts expected.
       

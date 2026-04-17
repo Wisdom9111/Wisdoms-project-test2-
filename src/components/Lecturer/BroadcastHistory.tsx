@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Trash2, AlertCircle, Loader2 } from 'lucide-react';
-import { Bulletin } from '../../types';
-import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { Trash2, Loader2, Bell } from 'lucide-react';
 import { doc, deleteDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { Bulletin } from '../../types';
 
 interface BroadcastHistoryProps {
   notices: Bulletin[];
@@ -14,26 +14,16 @@ const BroadcastHistory: React.FC<BroadcastHistoryProps> = ({ notices, onNoticeDe
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const deleteNotice = async (id: string) => {
-    // 4. THE FEEDBACK: Confirmation popup
     if (!window.confirm("Are you sure you want to remove this broadcast?")) return;
 
-    // 4. THE FEEDBACK: Set loading state for the specific icon
     setDeletingId(id);
-
     try {
-      // 1. THE DELETE LOGIC: Target the "notices" collection specifically
-      const noticeRef = doc(db, 'notices', id);
-      await deleteDoc(noticeRef);
-
-      // 2. THE STATE UPDATE (UI FIX): Immediately physically remove the box from the screen
-      // We call the parent's handler which will perform notices.filter()
+      await deleteDoc(doc(db, 'notices', id));
       onNoticeDeleted(id);
-
-      setToast({ message: 'Broadcast purged from portal successfully.', type: 'success' });
+      setToast({ message: 'Broadcast purged successfully.', type: 'success' });
     } catch (err) {
-      console.error("Critical: Broadcast Deletion Error:", err);
       handleFirestoreError(err, OperationType.DELETE, `notices/${id}`);
-      setToast({ message: 'Failed to remove broadcast. Please try again.', type: 'error' });
+      setToast({ message: 'Failed to remove broadcast.', type: 'error' });
     } finally {
       setDeletingId(null);
     }
@@ -55,27 +45,23 @@ const BroadcastHistory: React.FC<BroadcastHistoryProps> = ({ notices, onNoticeDe
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-800 line-clamp-2">{notice.content}</p>
                   <div className="flex items-center gap-3 mt-2">
-                    <span className="text-[10px] font-bold text-mouau-green bg-mouau-green/5 px-2 py-0.5 rounded-full">
-                      {notice.targetLevel}
-                    </span>
+                    <span className="text-[10px] font-bold text-mouau-green bg-mouau-green/5 px-2 py-0.5 rounded-full">{notice.targetLevel}</span>
                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
                       {notice.createdAt?.toDate ? new Date(notice.createdAt.toDate()).toLocaleDateString() : 'Just now'}
                     </span>
                   </div>
                 </div>
-                
-                {/* 3. THE BUTTON CONNECTION: onClick connects to deleteNotice(notice.id) */}
                 <button 
                   onClick={() => deleteNotice(notice.id)}
                   disabled={deletingId === notice.id}
                   className={`p-1.5 transition-colors rounded-full ${
                     deletingId === notice.id 
                       ? 'text-gray-400 cursor-not-allowed' 
-                      : 'text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-100' // Always visible when deleting, or hover
-                  } ${deletingId !== notice.id && 'opacity-0 group-hover:opacity-100'}`}
+                      : 'text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100'
+                  }`}
                 >
                   {deletingId === notice.id ? (
-                    <Loader2 size={16} className="animate-spin" />
+                    <Loader2 size={16} className="animate-spin text-mouau-green" />
                   ) : (
                     <Trash2 size={16} />
                   )}

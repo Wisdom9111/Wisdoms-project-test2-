@@ -29,6 +29,7 @@ export interface Bulletin {
   content: string;
   targetLevel: string;
   lecturerName: string;
+  lecturerUid?: string;
   createdAt: any;
 }
 

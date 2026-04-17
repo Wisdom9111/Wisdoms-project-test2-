@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Upload, LogOut, LayoutDashboard, ChevronRight, FileText, Trash2, AlertCircle, X, Bell, CheckCircle } from 'lucide-react';
+import { BookOpen, Upload, LogOut, LayoutDashboard, ChevronRight, FileText, Trash2, AlertCircle, CheckCircle, Bell } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
@@ -16,10 +16,10 @@ const LecturerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  
   const [bulletin, setBulletin] = useState({ content: '', level: '100L' });
   const [bulletinLoading, setBulletinLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [notices, setNotices] = useState<Bulletin[]>([]);
 
   useEffect(() => {
     if (toast) {
@@ -27,7 +27,6 @@ const LecturerDashboard: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [toast]);
-  const [notices, setNotices] = useState<Bulletin[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -52,7 +51,6 @@ const LecturerDashboard: React.FC = () => {
       setLoading(false);
     });
 
-    // Fetch lecturer notices
     const noticesRef = collection(db, 'notices');
     const noticesQ = query(
       noticesRef,
@@ -287,7 +285,7 @@ const LecturerDashboard: React.FC = () => {
       </main>
 
       {/* Confirmation Modal */}
-      <AnimatePresence>
+        <AnimatePresence>
         {deleteId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
             <motion.div 
