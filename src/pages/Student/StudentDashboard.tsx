@@ -59,26 +59,33 @@ const StudentDashboard: React.FC = () => {
       setLoading(false);
     });
 
-    const bulletinsRef = collection(db, 'notices');
-    const bulletinsQ = query(
-      bulletinsRef,
-      where('targetLevel', '==', viewLevel),
-      orderBy('createdAt', 'desc')
-    );
+    let unsubscribeBulletins: () => void = () => {};
+    try {
+      const bulletinsRef = collection(db, 'notices');
+      const bulletinsQ = query(
+        bulletinsRef,
+        where('targetLevel', '==', viewLevel),
+        orderBy('createdAt', 'desc')
+      );
 
-    const unsubscribeBulletins = onSnapshot(bulletinsQ, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Bulletin[];
-      setBulletins(data);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'notices');
-    });
+      unsubscribeBulletins = onSnapshot(bulletinsQ, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Bulletin[];
+        setBulletins(data);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, 'notices');
+      });
+    } catch (e) {
+      console.error("Broadcast listener error:", e);
+    }
 
     return () => {
       unsubscribe();
-      unsubscribeBulletins();
+      try {
+        unsubscribeBulletins();
+      } catch (e) {}
     };
   }, [user, viewLevel]);
 
@@ -103,12 +110,17 @@ const StudentDashboard: React.FC = () => {
     navigate('/login');
   };
 
-  const filteredMaterials = materials.filter(m => 
-    m.courseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.courseTitle.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredMaterials = (materials || []).filter(m => 
+    (m?.courseCode || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+    (m?.courseTitle || '').toLowerCase().includes((searchTerm || '').toLowerCase())
   );
 
+  if (!user) {
+    return null; // Safety check
+  }
+
   return (
+    <>
     <div className="min-h-screen bg-[#f8fafc]">
       <nav className="bg-[#006837] text-white px-6 py-4 flex items-center justify-between shadow-lg sticky top-0 z-10">
         <div className="flex items-center gap-2">
@@ -147,13 +159,13 @@ const StudentDashboard: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-gray-100 pb-10">
           <div>
             <span className="text-[12px] font-bold uppercase tracking-[2px] text-mouau-green">Student Portal</span>
-            <h1 className="text-4xl font-serif font-bold text-[#1a1a1a] mt-2 tracking-tight">Welcome, {user?.name}</h1>
+            <h1 className="text-4xl font-serif font-bold text-[#1a1a1a] mt-2 tracking-tight">Welcome, {user?.name || 'Student'}</h1>
           </div>
           <div className="flex gap-4">
             <div className="relative group">
               <button className="bg-white px-5 py-3 rounded-[4px] border border-gray-100 shadow-sm flex items-center gap-3 cursor-pointer hover:border-mouau-green transition-all group-hover:shadow-md">
                 <Clock className="text-mouau-green" size={18} />
-                <span className="text-sm font-bold text-[#666666] uppercase tracking-wide">{viewLevel} Section</span>
+                <span className="text-sm font-bold text-[#666666] uppercase tracking-wide">{viewLevel || '100L'} Section</span>
                 <ChevronDown size={14} className="text-gray-400 group-hover:rotate-180 transition-transform" />
               </button>
               
@@ -182,10 +194,10 @@ const StudentDashboard: React.FC = () => {
         {/* Dynamic Learning Section */}
         <section>
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-serif font-bold text-[#1a1a1a]">Curated learning for {viewLevel}</h2>
+            <h2 className="text-2xl font-serif font-bold text-[#1a1a1a]">Curated learning for {viewLevel || '100L'}</h2>
             <div className="flex items-center gap-2 text-mouau-green text-sm font-bold uppercase tracking-widest">
               <Layout size={16} />
-              <span>{materials.length} Materials</span>
+              <span>{materials?.length || 0} Materials</span>
             </div>
           </div>
 
@@ -330,6 +342,7 @@ const StudentDashboard: React.FC = () => {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 };
 
