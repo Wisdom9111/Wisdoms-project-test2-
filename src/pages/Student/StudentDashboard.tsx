@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Book, Search, LogOut, Clock, PlayCircle, Star, FileText, Layout, Info } from 'lucide-react';
+import { Book, Search, LogOut, Clock, PlayCircle, Star, FileText, Layout, Info, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../lib/firebase';
@@ -11,15 +11,16 @@ const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewingLevel, setViewingLevel] = useState<string>(user?.level || '300L');
 
   useEffect(() => {
     if (!user) return;
 
-    // Real-time listener for materials matching student level
+    // Real-time listener for materials matching selected level
     const materialsRef = collection(db, 'materials');
     const q = query(
       materialsRef, 
-      where('level', '==', user.level || '300L'),
+      where('level', '==', viewingLevel),
       orderBy('createdAt', 'desc')
     );
 
@@ -80,9 +81,25 @@ const StudentDashboard: React.FC = () => {
               <Star className="text-mouau-gold fill-mouau-gold" size={18} />
               <span className="font-bold text-[#1a1a1a]">4.2 GPA</span>
             </div>
-            <div className="bg-white px-5 py-3 rounded-[4px] border border-gray-100 shadow-sm flex items-center gap-3">
-              <Clock className="text-mouau-green" size={18} />
-              <span className="text-sm font-bold text-[#666666] uppercase tracking-wide">{user?.level} Section</span>
+            
+            <div className="relative group">
+              <div className="bg-white px-5 py-3 rounded-[4px] border border-gray-100 shadow-sm flex items-center gap-3 cursor-pointer hover:border-mouau-green transition-colors">
+                <Clock className="text-mouau-green" size={18} />
+                <span className="text-sm font-bold text-[#666666] uppercase tracking-wide">{viewingLevel} Section</span>
+                <ChevronDown size={14} className="text-gray-400" />
+              </div>
+              
+              <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-gray-100 shadow-xl rounded-[4px] py-2 hidden group-hover:block z-20">
+                {['100L', '200L', '300L', '400L', '500L'].map((lvl) => (
+                  <button
+                    key={lvl}
+                    onClick={() => setViewingLevel(lvl)}
+                    className={`w-full text-left px-4 py-2 text-sm font-bold hover:bg-mouau-green/5 transition-colors ${viewingLevel === lvl ? 'text-mouau-green' : 'text-gray-600'}`}
+                  >
+                    {lvl} Learning Path
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -90,7 +107,7 @@ const StudentDashboard: React.FC = () => {
         {/* Dynamic Learning Section */}
         <section>
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-serif font-bold text-[#1a1a1a]">Curated learning for {user?.level}</h2>
+            <h2 className="text-2xl font-serif font-bold text-[#1a1a1a]">Curated learning for {viewingLevel}</h2>
             <div className="flex items-center gap-2 text-mouau-green text-sm font-bold uppercase tracking-widest">
               <Layout size={16} />
               <span>{materials.length} Materials</span>
@@ -110,7 +127,7 @@ const StudentDashboard: React.FC = () => {
               </div>
               <h3 className="text-xl font-serif font-bold text-gray-900">No courses uploaded yet</h3>
               <p className="text-gray-500 mt-2 max-w-sm mx-auto">
-                No courses have been uploaded for your level ({user?.level}) yet. Check back later!
+                No courses have been uploaded for {viewingLevel} yet. Check back later!
               </p>
             </div>
           ) : (

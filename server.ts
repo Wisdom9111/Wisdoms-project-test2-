@@ -3,7 +3,7 @@ import 'dotenv/config';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import multer from 'multer';
 import cors from 'cors';
@@ -56,6 +56,28 @@ async function startServer() {
 
   app.get('/api/test', (req, res) => {
     res.json({ message: 'Server is reachable' });
+  });
+
+  // API Route for Vercel Blob Deletion
+  app.post('/api/delete', async (req, res) => {
+    const { url } = req.body;
+    try {
+      if (!process.env.BLOB_READ_WRITE_TOKEN) {
+        return res.status(500).json({ error: 'Server configuration error' });
+      }
+      if (!url) {
+        return res.status(400).json({ error: 'URL is required' });
+      }
+
+      await del(url, {
+        token: process.env.BLOB_READ_WRITE_TOKEN
+      });
+
+      res.status(200).json({ message: 'Blob deleted successfully' });
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      res.status(500).json({ error: error.message || 'Error deleting blob' });
+    }
   });
 
   // Health check

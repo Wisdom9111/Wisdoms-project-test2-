@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Upload, LogOut, LayoutDashboard, ChevronRight, FileText } from 'lucide-react';
+import { BookOpen, Upload, LogOut, LayoutDashboard, ChevronRight, FileText, Trash2, AlertCircle, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../lib/firebase';
-import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { Material } from '../../types';
+import { motion, AnimatePresence } from 'motion/react';
 
 const LecturerDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -12,6 +13,8 @@ const LecturerDashboard: React.FC = () => {
   const [recentUploads, setRecentUploads] = useState<Material[]>([]);
   const [totalMaterials, setTotalMaterials] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -42,6 +45,36 @@ const LecturerDashboard: React.FC = () => {
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    const materialToDelete = recentUploads.find(m => m.id === deleteId);
+    if (!materialToDelete) return;
+
+    setDeleting(true);
+    try {
+      // 1. Delete from Vercel Blob via our API
+      const response = await fetch('/api/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: materialToDelete.fileUrl }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete file from storage');
+      }
+
+      // 2. Delete from Firestore
+      await deleteDoc(doc(db, 'materials', deleteId));
+      
+      setDeleteId(null);
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('Failed to delete resource. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const stats = [
@@ -116,7 +149,7 @@ const LecturerDashboard: React.FC = () => {
               </div>
             ) : (
               recentUploads.map((material) => (
-                <div key={material.id} className="px-8 py-5 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer group">
+                <div key={material.id} className="px-8 py-5 flex items-center justify-between hover:bg-gray-50 transition-colors group">
                   <div className="flex items-center gap-6">
                     <div className="w-12 h-12 bg-mouau-green/10 text-mouau-green rounded-[4px] flex items-center justify-center font-bold text-xs border border-mouau-green/20 group-hover:bg-mouau-green group-hover:text-white transition-colors uppercase">
                       PDF
@@ -126,15 +159,70 @@ const LecturerDashboard: React.FC = () => {
                       <p className="text-sm text-gray-500 mt-0.5">Target: {material.level} • {material.semester} Semester</p>
                     </div>
                   </div>
-                  <a href={material.fileUrl} target="_blank" rel="noreferrer" className="text-gray-300 group-hover:text-mouau-green transition-colors">
-                    <ChevronRight size={20} />
-                  </a>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={() => setDeleteId(material.id)}
+                      className="p-2 text-gray-300 hover:text-red-600 transition-colors rounded-full hover:bg-red-50"
+                      title="Delete Material"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                    <a href={material.fileUrl} target="_blank" rel="noreferrer" className="text-gray-300 hover:text-mouau-green transition-colors">
+                      <ChevronRight size={20} />
+                    </a>
+                  </div>
                 </div>
               ))
             )}
           </div>
         </div>
       </main>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {deleteId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-md rounded-[4px] shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <AlertCircle size={32} />
+                </div>
+                <h3 className="text-2xl font-serif font-bold text-gray-900 mb-2">Confirm Destruction</h3>
+                <p className="text-gray-500 leading-relaxed italic font-serif">
+                  Are you certain you wish to remove this academic resource? This action is irreversible and will purge the file from the MOUAU digital vault.
+                </p>
+              </div>
+              
+              <div className="flex border-t border-gray-100">
+                <button 
+                  onClick={() => setDeleteId(null)}
+                  disabled={deleting}
+                  className="flex-1 py-4 font-bold text-gray-500 hover:bg-gray-50 transition-colors uppercase tracking-widest text-[11px]"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 py-4 font-bold bg-red-600 text-white hover:bg-red-700 transition-colors uppercase tracking-widest text-[11px] flex items-center justify-center gap-2"
+                >
+                  {deleting ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 size={14} />
+                  )}
+                  <span>{deleting ? 'Purging...' : 'Confirm Purge'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
