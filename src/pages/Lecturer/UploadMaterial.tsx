@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Upload, CheckCircle2, AlertCircle, ArrowLeft, FileText, X } from 'lucide-react';
-import { db, storage } from '../../lib/firebase';
+import { upload } from '@vercel/blob/client';
+import { db } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
@@ -63,18 +63,18 @@ const UploadMaterial: React.FC = () => {
     setSuccess(false);
 
     try {
-      // 1. Create a storage reference
-      const fileExtension = selectedFile.name.split('.').pop();
-      const fileName = `${Date.now()}_${formData.courseCode.replace(/\s+/g, '_')}.${fileExtension}`;
-      const storageRef = ref(storage, `courseware/${user.uid}/${fileName}`);
+      // 1. Upload file using Vercel Blob client-side SDK (handleUpload flow)
+      const newBlob = await upload(selectedFile.name, selectedFile, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+        onUploadProgress: (progressEvent) => {
+          setUploadProgress(progressEvent.percentage);
+        },
+      });
 
-      // 2. Upload file
-      const snapshot = await uploadBytes(storageRef, selectedFile);
-      
-      // 3. Get download URL
-      const secureUrl = await getDownloadURL(snapshot.ref);
+      const secureUrl = newBlob.url;
 
-      // 4. Save to Firestore
+      // 2. Save metadata to Firestore
       await addDoc(collection(db, 'materials'), {
         ...formData,
         fileUrl: secureUrl,

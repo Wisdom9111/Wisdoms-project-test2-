@@ -9,7 +9,7 @@ const Register = lazy(() => import('./pages/Auth/Register'));
 const LecturerDashboard = lazy(() => import('./pages/Lecturer/LecturerDashboard'));
 const UploadMaterial = lazy(() => import('./pages/Lecturer/UploadMaterial'));
 const StudentDashboard = lazy(() => import('./pages/Student/StudentDashboard'));
-const CourseView = lazy(() => import('./pages/Student/CourseView'));
+const SecureViewer = lazy(() => import('./pages/Student/SecureViewer'));
 const Quiz = lazy(() => import('./pages/Student/Quiz'));
 
 // Loading component
@@ -63,7 +63,7 @@ const AppContent = () => {
         } />
         <Route path="/course/:id" element={
           <ProtectedRoute allowedRole="student">
-            <CourseView />
+            <SecureViewer />
           </ProtectedRoute>
         } />
         <Route path="/quiz/:id" element={
