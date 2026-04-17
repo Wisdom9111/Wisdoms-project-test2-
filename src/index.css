@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --color-mouau-green: #006837;
+  --color-mouau-gold: #c5a059;
+  
+  --font-serif: "Georgia", serif;
+  --font-sans: "Helvetica Neue", Arial, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-white text-[#1a1a1a];
+  }
+}

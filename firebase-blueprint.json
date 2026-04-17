@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "material": {
+      "title": "Course Material",
+      "description": "Educational documents and resources uploaded by lecturers.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "courseCode": { "type": "string", "description": "e.g., CSC 301" },
+        "courseTitle": { "type": "string" },
+        "lecturerName": { "type": "string" },
+        "lecturerUid": { "type": "string" },
+        "fileUrl": { "type": "string", "format": "uri" },
+        "level": { "type": "string", "enum": ["100L", "200L", "300L", "400L", "500L"] },
+        "semester": { "type": "string", "enum": ["First", "Second"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["courseCode", "courseTitle", "lecturerName", "lecturerUid", "fileUrl", "level", "semester", "createdAt"]
+    },
+    "user": {
+      "title": "User Profile",
+      "description": "User account information and roles.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "lecturer"] },
+        "level": { "type": "string", "enum": ["100L", "200L", "300L", "400L", "500L"], "description": "Applicable for students" }
+      },
+      "required": ["uid", "email", "name", "role"]
+    }
+  },
+  "firestore": {
+    "/materials/{materialId}": {
+      "schema": "material",
+      "description": "Collection of course materials."
+    },
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profile data."
+    }
+  }
+}
