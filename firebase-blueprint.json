@@ -15,11 +15,12 @@
         "semester": { "type": "string", "enum": ["First", "Second"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "keyTopics": { "type": "array", "items": { "type": "string" }, "description": "3 key topics extracted from the material" },
-        "overview": { "type": "string", "description": "A 2-line summary of the content" }
+        "overview": { "type": "string", "description": "A 2-line summary of the content" },
+        "extractedText": { "type": "string", "description": "Full extracted text from the PDF for academic intelligence." }
       },
       "required": ["courseCode", "courseTitle", "lecturerName", "lecturerUid", "fileUrl", "level", "semester", "createdAt"]
     },
-    "bulletin": {
+    "notice": {
       "title": "Bulletin Notice",
       "description": "Official notices posted by lecturers for specific student levels.",
       "type": "object",
@@ -28,9 +29,10 @@
         "content": { "type": "string" },
         "targetLevel": { "type": "string", "enum": ["100L", "200L", "300L", "400L"] },
         "lecturerName": { "type": "string" },
+        "lecturerUid": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["content", "targetLevel", "lecturerName", "createdAt"]
+      "required": ["content", "targetLevel", "lecturerName", "lecturerUid", "createdAt"]
     },
     "user": {
       "title": "User Profile",
@@ -51,8 +53,8 @@
       "schema": "material",
       "description": "Collection of course materials."
     },
-    "/bulletins/{bulletinId}": {
-      "schema": "bulletin",
+    "/notices/{noticeId}": {
+      "schema": "notice",
       "description": "Collection of official notices."
     },
     "/users/{userId}": {

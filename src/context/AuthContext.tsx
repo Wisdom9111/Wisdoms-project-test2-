@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Role } from '../types';
-import { auth, db } from '../lib/firebase';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -64,10 +64,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role,
           name: email.split('@')[0],
         };
-        await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+        try {
+          await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `users/${firebaseUser.uid}`);
+        }
         setUser(userData);
       }
     } catch (error: any) {
+      if (error?.code === 'permission-denied') {
+        // This is handled by handleFirestoreError inside the try/catch if it happened there,
+        // but if it happened elsewhere in the login process that we didn't explicitly wrap...
+      }
       console.error("Auth error:", error.code || error.message);
       throw error;
     }
@@ -86,7 +94,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         level: level || (role === 'student' ? '100L' : undefined),
       };
 
-      await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+      try {
+        await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `users/${firebaseUser.uid}`);
+      }
       setUser(userData);
     } catch (error: any) {
       console.error("Register error:", error.code || error.message);
@@ -95,6 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    sessionStorage.removeItem('activeLevel');
     await signOut(auth);
     setUser(null);
   };

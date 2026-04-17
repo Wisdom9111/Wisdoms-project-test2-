@@ -11,6 +11,7 @@ const UploadMaterial = lazy(() => import('./pages/Lecturer/UploadMaterial'));
 const StudentDashboard = lazy(() => import('./pages/Student/StudentDashboard'));
 const SecureViewer = lazy(() => import('./pages/Student/SecureViewer'));
 const Quiz = lazy(() => import('./pages/Student/Quiz'));
+const ResearchAssistant = lazy(() => import('./pages/Student/ResearchAssistant'));
 
 // Loading component
 const LoadingScreen = () => (
@@ -69,6 +70,11 @@ const AppContent = () => {
         <Route path="/quiz/:id" element={
           <ProtectedRoute allowedRole="student">
             <Quiz />
+          </ProtectedRoute>
+        } />
+        <Route path="/research-assistant" element={
+          <ProtectedRoute allowedRole="student">
+            <ResearchAssistant />
           </ProtectedRoute>
         } />
 

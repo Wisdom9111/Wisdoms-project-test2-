@@ -1,21 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { Book, Search, LogOut, Clock, PlayCircle, Star, FileText, Layout, Info, ChevronDown, Bell, ChevronUp, ExternalLink } from 'lucide-react';
+import { Book, Search, LogOut, Clock, PlayCircle, Star, FileText, Layout, Info, ChevronDown, Bell, ChevronUp, ExternalLink, Loader2, Trophy, HelpCircle, CheckCircle, X, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { Material, Bulletin } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
+import QuizModal from '../../components/Student/QuizModal';
 
 const StudentDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewLevel, setViewLevel] = useState<string>(user?.level || '300L');
+  const [viewLevel, setViewLevel] = useState<string>(() => {
+    return sessionStorage.getItem('activeLevel') || user?.level || '100L';
+  });
+
+  useEffect(() => {
+    if (viewLevel) {
+      sessionStorage.setItem('activeLevel', viewLevel);
+    }
+  }, [viewLevel]);
+
+  // Sync viewLevel with user.level if it's the first time it loads and nothing is in session
+  useEffect(() => {
+    const savedLevel = sessionStorage.getItem('activeLevel');
+    if (!savedLevel && user?.level) {
+      setViewLevel(user.level);
+    }
+  }, [user?.level]);
   const [searchTerm, setSearchTerm] = useState('');
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [quizInfo, setQuizInfo] = useState<{ courseTitle: string; materialText: string } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -37,7 +55,7 @@ const StudentDashboard: React.FC = () => {
       setMaterials(data);
       setLoading(false);
     }, (error) => {
-      console.error("Firestore error:", error);
+      handleFirestoreError(error, OperationType.GET, 'materials');
       setLoading(false);
     });
 
@@ -47,7 +65,7 @@ const StudentDashboard: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
-    const bulletinsRef = collection(db, 'bulletins');
+    const bulletinsRef = collection(db, 'notices');
     const q = query(
       bulletinsRef,
       where('targetLevel', '==', viewLevel),
@@ -60,6 +78,8 @@ const StudentDashboard: React.FC = () => {
         ...doc.data()
       })) as Bulletin[];
       setBulletins(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'notices');
     });
 
     return () => unsubscribe();
@@ -67,9 +87,19 @@ const StudentDashboard: React.FC = () => {
 
   useEffect(() => {
     if (!user) return;
-    // Reset view level to user's permanent level if it changes (e.g. login)
-    setViewLevel(user.level || '300L');
-  }, [user?.uid]);
+    // Load from sessionStorage if exists, otherwise use user's level
+    const sessionLevel = sessionStorage.getItem('activeLevel');
+    if (sessionLevel) {
+      setViewLevel(sessionLevel);
+    } else if (user.level) {
+      setViewLevel(user.level);
+    }
+  }, [user?.uid, user?.level]);
+
+  const handleLevelChange = (lvl: string) => {
+    setViewLevel(lvl);
+    sessionStorage.setItem('activeLevel', lvl);
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -99,6 +129,13 @@ const StudentDashboard: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <button 
+            onClick={() => navigate('/research-assistant')}
+            className="flex items-center gap-2 bg-mouau-gold/20 text-mouau-gold px-3 py-1.5 rounded-lg border border-mouau-gold/30 hover:bg-mouau-gold/30 transition-all font-bold text-xs"
+          >
+            <Sparkles size={16} />
+            <span>MOUAU AI Assistant</span>
+          </button>
           <button 
             onClick={handleLogout}
             className="flex items-center gap-2 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors"
@@ -130,7 +167,7 @@ const StudentDashboard: React.FC = () => {
                 {['100L', '200L', '300L', '400L'].map((lvl) => (
                   <button
                     key={lvl}
-                    onClick={() => setViewLevel(lvl)}
+                    onClick={() => handleLevelChange(lvl)}
                     className={`w-full text-left px-5 py-2.5 text-sm font-bold transition-colors flex items-center justify-between ${viewLevel === lvl ? 'text-mouau-green bg-mouau-green/5' : 'text-gray-600 hover:bg-gray-50'}`}
                   >
                     <span>{lvl} Course Materials</span>
@@ -219,13 +256,23 @@ const StudentDashboard: React.FC = () => {
                               {material.overview || "This comprehensive academic resource provides a foundational look into the core principles of the course, curated specifically for MOUAU standards."}
                             </p>
                             
-                            <button
-                              onClick={() => navigate(`/course/${material.id}`)}
-                              className="mt-6 flex items-center justify-center gap-2 bg-mouau-green text-white px-6 py-3 rounded-[4px] font-bold text-xs uppercase tracking-widest hover:bg-[#00522b] transition-all self-start shadow-lg shadow-mouau-green/20"
-                            >
-                              <ExternalLink size={14} />
-                              Read Now
-                            </button>
+                            <div className="flex items-center gap-4 mt-6">
+                              <button
+                                onClick={() => navigate(`/course/${material.id}`)}
+                                className="flex items-center justify-center gap-2 bg-mouau-green text-white px-6 py-3 rounded-[4px] font-bold text-xs uppercase tracking-widest hover:bg-[#00522b] transition-all shadow-lg shadow-mouau-green/20"
+                              >
+                                <ExternalLink size={14} />
+                                Read Now
+                              </button>
+                              
+                              <button
+                                onClick={() => setQuizInfo({ courseTitle: material.courseTitle, materialText: material.extractedText || '' })}
+                                className="flex items-center justify-center gap-2 bg-white border border-mouau-green text-mouau-green px-6 py-3 rounded-[4px] font-bold text-xs uppercase tracking-widest hover:bg-mouau-green/5 transition-all"
+                              >
+                                <HelpCircle size={14} />
+                                Take Practice Quiz
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </motion.div>
@@ -274,6 +321,17 @@ const StudentDashboard: React.FC = () => {
           </div>
         </section>
       </main>
+
+      <AnimatePresence>
+        {quizInfo && (
+          <QuizModal 
+            isOpen={true} 
+            onClose={() => setQuizInfo(null)}
+            courseTitle={quizInfo.courseTitle}
+            materialText={quizInfo.materialText}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

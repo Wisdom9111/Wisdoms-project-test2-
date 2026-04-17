@@ -21,6 +21,7 @@ export interface Material {
   createdAt: any;
   keyTopics?: string[];
   overview?: string;
+  extractedText?: string;
 }
 
 export interface Bulletin {
@@ -29,6 +30,16 @@ export interface Bulletin {
   targetLevel: string;
   lecturerName: string;
   createdAt: any;
+}
+
+export interface QuizQuestion {
+  id: string;
+  type: 'objective' | 'subjective';
+  question: string;
+  options?: string[]; // Only for objective
+  correctAnswer?: number; // Only for objective (index)
+  sampleAnswer?: string; // For subjective grading context
+  explanation?: string; // For correct reasoning
 }
 
 export interface AuthState {

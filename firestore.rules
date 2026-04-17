@@ -75,6 +75,18 @@ service cloud.firestore {
              isValidUrl(data.fileUrl) &&
              data.level in ['100L', '200L', '300L', '400L'] &&
              data.semester in ['First', 'Second'] &&
+             data.createdAt is timestamp &&
+             (!('extractedText' in data) || data.extractedText is string) &&
+             (!('overview' in data) || data.overview is string) &&
+             (!('keyTopics' in data) || data.keyTopics is list);
+    }
+
+    function isValidNotice(data) {
+      return data.keys().hasAll(['content', 'targetLevel', 'lecturerName', 'lecturerUid', 'createdAt']) &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 5000 &&
+             data.targetLevel in ['100L', '200L', '300L', '400L'] &&
+             data.lecturerName is string &&
+             data.lecturerUid == request.auth.uid &&
              data.createdAt is timestamp;
     }
 
@@ -96,10 +108,10 @@ service cloud.firestore {
       allow delete: if isLecturer() && resource.data.lecturerUid == request.auth.uid;
     }
 
-    match /bulletins/{bulletinId} {
+    match /notices/{noticeId} {
       allow read: if isAuthenticated();
-      allow create: if isLecturer();
-      allow delete: if isLecturer() && resource.data.lecturerName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name;
+      allow create: if isLecturer() && isValidNotice(request.resource.data);
+      allow delete: if isLecturer() && resource.data.lecturerUid == request.auth.uid;
     }
   }
 }

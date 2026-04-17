@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, CheckCircle2, AlertCircle, ArrowLeft, FileText, X } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
-import { db } from '../../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -64,7 +64,20 @@ const UploadMaterial: React.FC = () => {
     setSuccess(false);
 
     try {
-      // 1. Upload file using Vercel Blob client-side SDK (handleUpload flow)
+      // 1. Convert file to base64 for AI scanning if it's a PDF
+      let base64File = '';
+      if (selectedFile.type === 'application/pdf') {
+        base64File = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]);
+          };
+          reader.readAsDataURL(selectedFile);
+        });
+      }
+
+      // 2. Upload file using Vercel Blob client-side SDK
       const newBlob = await upload(selectedFile.name, selectedFile, {
         access: 'public',
         handleUploadUrl: '/api/upload',
@@ -75,19 +88,23 @@ const UploadMaterial: React.FC = () => {
 
       const secureUrl = newBlob.url;
 
-      // 2. AI Analysis of the material
-      const aiAnalysis = await analyzeMaterial(formData.courseCode, formData.courseTitle);
+      // 3. AI Analysis of the material (Passing PDF base64 if available)
+      const aiAnalysis = await analyzeMaterial(formData.courseCode, formData.courseTitle, base64File);
 
-      // 3. Save metadata to Firestore
-      await addDoc(collection(db, 'materials'), {
-        ...formData,
-        ...aiAnalysis,
-        fileUrl: secureUrl,
-        fileName: selectedFile.name,
-        lecturerName: user.name,
-        lecturerUid: user.uid,
-        createdAt: serverTimestamp()
-      });
+      // 4. Save metadata to Firestore
+      try {
+        await addDoc(collection(db, 'materials'), {
+          ...formData,
+          ...aiAnalysis,
+          fileUrl: secureUrl,
+          fileName: selectedFile.name,
+          lecturerName: user.name,
+          lecturerUid: user.uid,
+          createdAt: serverTimestamp()
+        });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.CREATE, 'materials');
+      }
 
       setSuccess(true);
       setSelectedFile(null);

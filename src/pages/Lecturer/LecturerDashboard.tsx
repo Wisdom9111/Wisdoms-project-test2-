@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Upload, LogOut, LayoutDashboard, ChevronRight, FileText, Trash2, AlertCircle, X, Bell } from 'lucide-react';
+import { BookOpen, Upload, LogOut, LayoutDashboard, ChevronRight, FileText, Trash2, AlertCircle, X, Bell, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { Material } from '../../types';
+import { Material, Bulletin } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
+import BroadcastHistory from '../../components/Lecturer/BroadcastHistory';
 
 const LecturerDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -18,6 +19,15 @@ const LecturerDashboard: React.FC = () => {
   
   const [bulletin, setBulletin] = useState({ content: '', level: '100L' });
   const [bulletinLoading, setBulletinLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+  const [notices, setNotices] = useState<Bulletin[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -38,11 +48,32 @@ const LecturerDashboard: React.FC = () => {
       setTotalMaterials(data.length);
       setLoading(false);
     }, (error) => {
-      console.error("Firestore error:", error);
+      handleFirestoreError(error, OperationType.GET, 'materials');
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    // Fetch lecturer notices
+    const noticesRef = collection(db, 'notices');
+    const noticesQ = query(
+      noticesRef,
+      where('lecturerUid', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribeNotices = onSnapshot(noticesQ, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Bulletin[];
+      setNotices(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'notices');
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeNotices();
+    };
   }, [user]);
 
   const handleLogout = async () => {
@@ -68,13 +99,12 @@ const LecturerDashboard: React.FC = () => {
         throw new Error('Failed to delete file from storage');
       }
 
-      // 2. Delete from Firestore
       await deleteDoc(doc(db, 'materials', deleteId));
-      
       setDeleteId(null);
+      setToast({ message: 'Material purged from digital vault successfully.', type: 'success' });
     } catch (err) {
-      console.error('Delete error:', err);
-      alert('Failed to delete resource. Please try again.');
+      handleFirestoreError(err, OperationType.DELETE, `materials/${deleteId}`);
+      setToast({ message: 'Failed to delete resource. Please try again.', type: 'error' });
     } finally {
       setDeleting(false);
     }
@@ -86,17 +116,18 @@ const LecturerDashboard: React.FC = () => {
 
     setBulletinLoading(true);
     try {
-      await addDoc(collection(db, 'bulletins'), {
+      await addDoc(collection(db, 'notices'), {
         content: bulletin.content,
         targetLevel: bulletin.level,
         lecturerName: user.name,
+        lecturerUid: user.uid,
         createdAt: serverTimestamp()
       });
       setBulletin({ content: '', level: '100L' });
-      alert('Internal Bulletin broadcasted to the student portal.');
+      setToast({ message: 'Broadcast published to portal successfully.', type: 'success' });
     } catch (err) {
-      console.error('Bulletin error:', err);
-      alert('Failed to broadcast bulletin.');
+      handleFirestoreError(err, OperationType.CREATE, 'notices');
+      setToast({ message: 'Failed to broadcast bulletin.', type: 'error' });
     } finally {
       setBulletinLoading(false);
     }
@@ -245,6 +276,12 @@ const LecturerDashboard: React.FC = () => {
                 </button>
               </form>
             </div>
+
+            <BroadcastHistory 
+              notices={notices} 
+              onNoticeDeleted={(id) => setNotices(prev => prev.filter(n => n.id !== id))}
+              setToast={setToast}
+            />
           </div>
         </div>
       </main>
@@ -292,6 +329,23 @@ const LecturerDashboard: React.FC = () => {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className={`fixed bottom-6 right-6 z-[100] px-6 py-3 rounded-[4px] shadow-2xl flex items-center gap-3 border ${
+              toast.type === 'success' ? 'bg-mouau-green border-white/20 text-white' : 'bg-red-600 border-white/20 text-white'
+            }`}
+          >
+            {toast.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+            <span className="text-[11px] font-bold uppercase tracking-widest">{toast.message}</span>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
