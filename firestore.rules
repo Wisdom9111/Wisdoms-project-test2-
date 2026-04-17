@@ -95,5 +95,11 @@ service cloud.firestore {
                       isValidMaterial(request.resource.data);
       allow delete: if isLecturer() && resource.data.lecturerUid == request.auth.uid;
     }
+
+    match /bulletins/{bulletinId} {
+      allow read: if isAuthenticated();
+      allow create: if isLecturer();
+      allow delete: if isLecturer() && resource.data.lecturerName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name;
+    }
   }
 }

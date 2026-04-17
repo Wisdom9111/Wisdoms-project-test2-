@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Upload, LogOut, LayoutDashboard, ChevronRight, FileText, Trash2, AlertCircle, X } from 'lucide-react';
+import { BookOpen, Upload, LogOut, LayoutDashboard, ChevronRight, FileText, Trash2, AlertCircle, X, Bell } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../lib/firebase';
-import { collection, query, where, onSnapshot, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, deleteDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Material } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -15,6 +15,9 @@ const LecturerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  
+  const [bulletin, setBulletin] = useState({ content: '', level: '100L' });
+  const [bulletinLoading, setBulletinLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -77,6 +80,28 @@ const LecturerDashboard: React.FC = () => {
     }
   };
 
+  const handlePostBulletin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !bulletin.content.trim()) return;
+
+    setBulletinLoading(true);
+    try {
+      await addDoc(collection(db, 'bulletins'), {
+        content: bulletin.content,
+        targetLevel: bulletin.level,
+        lecturerName: user.name,
+        createdAt: serverTimestamp()
+      });
+      setBulletin({ content: '', level: '100L' });
+      alert('Internal Bulletin broadcasted to the student portal.');
+    } catch (err) {
+      console.error('Bulletin error:', err);
+      alert('Failed to broadcast bulletin.');
+    } finally {
+      setBulletinLoading(false);
+    }
+  };
+
   const stats = [
     { label: 'Total Materials', value: totalMaterials.toString(), icon: BookOpen, color: 'bg-blue-50 text-blue-600' },
     { label: 'Active Topics', value: Array.from(new Set(recentUploads.map(m => m.courseCode))).length.toString(), icon: LayoutDashboard, color: 'bg-green-50 text-[#006837]' },
@@ -135,45 +160,91 @@ const LecturerDashboard: React.FC = () => {
           ))}
         </div>
 
-        <div className="bg-white rounded-[4px] shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <h2 className="font-serif font-bold text-xl text-[#1a1a1a]">Your Recent Uploads</h2>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {loading ? (
-              <div className="p-8 text-center text-gray-400">Loading your materials...</div>
-            ) : recentUploads.length === 0 ? (
-              <div className="p-12 text-center text-gray-400">
-                <FileText size={48} className="mx-auto mb-4 opacity-20" />
-                <p>You haven't uploaded any materials yet.</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white rounded-[4px] shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <h2 className="font-serif font-bold text-xl text-[#1a1a1a]">Your Recent Uploads</h2>
               </div>
-            ) : (
-              recentUploads.map((material) => (
-                <div key={material.id} className="px-8 py-5 flex items-center justify-between hover:bg-gray-50 transition-colors group">
-                  <div className="flex items-center gap-6">
-                    <div className="w-12 h-12 bg-mouau-green/10 text-mouau-green rounded-[4px] flex items-center justify-center font-bold text-xs border border-mouau-green/20 group-hover:bg-mouau-green group-hover:text-white transition-colors uppercase">
-                      PDF
-                    </div>
-                    <div>
-                      <h3 className="font-serif font-bold text-lg text-[#1a1a1a] group-hover:text-mouau-green transition-colors">{material.courseCode} - {material.courseTitle}</h3>
-                      <p className="text-sm text-gray-500 mt-0.5">Target: {material.level} • {material.semester} Semester</p>
-                    </div>
+              <div className="divide-y divide-gray-100">
+                {loading ? (
+                  <div className="p-8 text-center text-gray-400">Loading your materials...</div>
+                ) : recentUploads.length === 0 ? (
+                  <div className="p-12 text-center text-gray-400">
+                    <FileText size={48} className="mx-auto mb-4 opacity-20" />
+                    <p>You haven't uploaded any materials yet.</p>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <button 
-                      onClick={() => setDeleteId(material.id)}
-                      className="p-2 text-gray-300 hover:text-red-600 transition-colors rounded-full hover:bg-red-50"
-                      title="Delete Material"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                    <a href={material.fileUrl} target="_blank" rel="noreferrer" className="text-gray-300 hover:text-mouau-green transition-colors">
-                      <ChevronRight size={20} />
-                    </a>
-                  </div>
+                ) : (
+                  recentUploads.map((material) => (
+                    <div key={material.id} className="px-8 py-5 flex items-center justify-between hover:bg-gray-50 transition-colors group">
+                      <div className="flex items-center gap-6">
+                        <div className="w-12 h-12 bg-mouau-green/10 text-mouau-green rounded-[4px] flex items-center justify-center font-bold text-xs border border-mouau-green/20 group-hover:bg-mouau-green group-hover:text-white transition-colors uppercase">
+                          PDF
+                        </div>
+                        <div>
+                          <h3 className="font-serif font-bold text-lg text-[#1a1a1a] group-hover:text-mouau-green transition-colors">{material.courseCode} - {material.courseTitle}</h3>
+                          <p className="text-sm text-gray-500 mt-0.5">Target: {material.level} • {material.semester} Semester</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <button 
+                          onClick={() => setDeleteId(material.id)}
+                          className="p-2 text-gray-300 hover:text-red-600 transition-colors rounded-full hover:bg-red-50"
+                          title="Delete Material"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                        <a href={material.fileUrl} target="_blank" rel="noreferrer" className="text-gray-300 hover:text-mouau-green transition-colors">
+                          <ChevronRight size={20} />
+                        </a>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            <div className="bg-white rounded-[4px] shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-8 py-5 border-b border-gray-100 bg-mouau-green text-white">
+                <h2 className="font-serif font-bold text-xl flex items-center gap-2">
+                  <Bell size={20} />
+                  Post Internal Bulletin
+                </h2>
+              </div>
+              <form onSubmit={handlePostBulletin} className="p-8 space-y-5">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-[#666666] uppercase tracking-widest block">Bulletin Message</label>
+                  <textarea
+                    required
+                    value={bulletin.content}
+                    onChange={e => setBulletin({ ...bulletin, content: e.target.value })}
+                    placeholder="Enter academic notice or bulletin details..."
+                    className="w-full h-32 px-4 py-3 border border-gray-200 rounded-[4px] outline-none focus:border-mouau-green transition-all bg-gray-50/50 resize-none font-medium"
+                  />
                 </div>
-              ))
-            )}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-[#666666] uppercase tracking-widest block">Target Student Level</label>
+                  <select
+                    value={bulletin.level}
+                    onChange={e => setBulletin({ ...bulletin, level: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-[4px] outline-none focus:border-mouau-green bg-white font-bold italic"
+                  >
+                    {['100L', '200L', '300L', '400L'].map(l => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="submit"
+                  disabled={bulletinLoading}
+                  className={`w-full py-4 rounded-[4px] font-bold text-white shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-widest text-[12px] ${bulletinLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-mouau-green hover:bg-[#00522b]'}`}
+                >
+                  {bulletinLoading ? 'Broadcasting...' : 'Broadcast Notice'}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </main>

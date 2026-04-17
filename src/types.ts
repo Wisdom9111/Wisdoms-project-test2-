@@ -19,6 +19,16 @@ export interface Material {
   level: string;
   semester: string;
   createdAt: any;
+  keyTopics?: string[];
+  overview?: string;
+}
+
+export interface Bulletin {
+  id: string;
+  content: string;
+  targetLevel: string;
+  lecturerName: string;
+  createdAt: any;
 }
 
 export interface AuthState {

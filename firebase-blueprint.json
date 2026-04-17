@@ -13,9 +13,24 @@
         "fileUrl": { "type": "string", "format": "uri" },
         "level": { "type": "string", "enum": ["100L", "200L", "300L", "400L"] },
         "semester": { "type": "string", "enum": ["First", "Second"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "keyTopics": { "type": "array", "items": { "type": "string" }, "description": "3 key topics extracted from the material" },
+        "overview": { "type": "string", "description": "A 2-line summary of the content" }
       },
       "required": ["courseCode", "courseTitle", "lecturerName", "lecturerUid", "fileUrl", "level", "semester", "createdAt"]
+    },
+    "bulletin": {
+      "title": "Bulletin Notice",
+      "description": "Official notices posted by lecturers for specific student levels.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "content": { "type": "string" },
+        "targetLevel": { "type": "string", "enum": ["100L", "200L", "300L", "400L"] },
+        "lecturerName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["content", "targetLevel", "lecturerName", "createdAt"]
     },
     "user": {
       "title": "User Profile",
@@ -35,6 +50,10 @@
     "/materials/{materialId}": {
       "schema": "material",
       "description": "Collection of course materials."
+    },
+    "/bulletins/{bulletinId}": {
+      "schema": "bulletin",
+      "description": "Collection of official notices."
     },
     "/users/{userId}": {
       "schema": "user",

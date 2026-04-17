@@ -6,6 +6,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { analyzeMaterial } from '../../services/geminiService';
 
 const UploadMaterial: React.FC = () => {
   const { user } = useAuth();
@@ -74,9 +75,13 @@ const UploadMaterial: React.FC = () => {
 
       const secureUrl = newBlob.url;
 
-      // 2. Save metadata to Firestore
+      // 2. AI Analysis of the material
+      const aiAnalysis = await analyzeMaterial(formData.courseCode, formData.courseTitle);
+
+      // 3. Save metadata to Firestore
       await addDoc(collection(db, 'materials'), {
         ...formData,
+        ...aiAnalysis,
         fileUrl: secureUrl,
         fileName: selectedFile.name,
         lecturerName: user.name,

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Book, Search, LogOut, Clock, PlayCircle, Star, FileText, Layout, Info, ChevronDown } from 'lucide-react';
+import { Book, Search, LogOut, Clock, PlayCircle, Star, FileText, Layout, Info, ChevronDown, Bell, ChevronUp, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../lib/firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
-import { Material } from '../../types';
+import { Material, Bulletin } from '../../types';
+import { motion, AnimatePresence } from 'motion/react';
 
 const StudentDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -12,6 +13,9 @@ const StudentDashboard: React.FC = () => {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewLevel, setViewLevel] = useState<string>(user?.level || '300L');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [bulletins, setBulletins] = useState<Bulletin[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -42,6 +46,27 @@ const StudentDashboard: React.FC = () => {
 
   useEffect(() => {
     if (!user) return;
+
+    const bulletinsRef = collection(db, 'bulletins');
+    const q = query(
+      bulletinsRef,
+      where('targetLevel', '==', viewLevel),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Bulletin[];
+      setBulletins(data);
+    });
+
+    return () => unsubscribe();
+  }, [user, viewLevel]);
+
+  useEffect(() => {
+    if (!user) return;
     // Reset view level to user's permanent level if it changes (e.g. login)
     setViewLevel(user.level || '300L');
   }, [user?.uid]);
@@ -50,6 +75,11 @@ const StudentDashboard: React.FC = () => {
     await logout();
     navigate('/login');
   };
+
+  const filteredMaterials = materials.filter(m => 
+    m.courseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    m.courseTitle.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
@@ -63,8 +93,10 @@ const StudentDashboard: React.FC = () => {
             <Search size={16} className="text-white/70 mr-2" />
             <input 
               type="text" 
-              placeholder="Search courses..." 
-              className="bg-transparent border-none outline-none text-sm placeholder:text-white/50 w-48"
+              placeholder="Search by code or title..." 
+              className="bg-transparent border-none outline-none text-sm placeholder:text-white/50 w-64"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <button 
@@ -124,42 +156,82 @@ const StudentDashboard: React.FC = () => {
           </div>
 
           {loading ? (
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+             <div className="space-y-4">
                {[1,2,3].map(i => (
-                 <div key={i} className="h-64 bg-gray-100 animate-pulse rounded-[4px]" />
+                 <div key={i} className="h-20 bg-gray-100 animate-pulse rounded-[4px]" />
                ))}
              </div>
-          ) : materials.length === 0 ? (
+          ) : filteredMaterials.length === 0 ? (
             <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-20 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
                 <Info size={32} />
               </div>
-              <h3 className="text-xl font-serif font-bold text-gray-900">No courses uploaded yet</h3>
+              <h3 className="text-xl font-serif font-bold text-gray-900">No courses matching your criteria</h3>
               <p className="text-gray-500 mt-2 max-w-sm mx-auto">
-                No courses have been uploaded for {viewLevel} yet. Check back later!
+                We couldn't find any materials for {viewLevel} matching "{searchTerm}".
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {materials.map((material) => (
-                <button 
-                  key={material.id}
-                  onClick={() => navigate(`/course/${material.id}`)}
-                  className="bg-white p-8 rounded-[4px] shadow-sm border border-gray-100 hover:shadow-xl hover:border-mouau-green/20 transition-all cursor-pointer group flex flex-col h-full text-left w-full"
-                >
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="p-4 bg-gray-50 rounded-full group-hover:bg-mouau-green/10 transition-colors text-mouau-green">
-                      <FileText size={28} />
+            <div className="space-y-4">
+              {filteredMaterials.map((material) => (
+                <div key={material.id} className="bg-white rounded-[4px] border border-gray-100 shadow-sm overflow-hidden hover:border-mouau-green transition-all">
+                  <button 
+                    onClick={() => setExpandedId(expandedId === material.id ? null : material.id)}
+                    className="w-full px-8 py-5 flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-8 flex-1">
+                      <div className="w-20 font-bold text-mouau-green tracking-tight font-mono">{material.courseCode}</div>
+                      <div className="font-serif font-bold text-lg text-gray-900 flex-1 truncate text-left">{material.courseTitle}</div>
+                      <div className="text-sm text-gray-400 font-medium italic hidden md:block w-48 text-right underline decoration-mouau-green/20 underline-offset-4">Lecturer: {material.lecturerName}</div>
                     </div>
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-[2px]">{material.semester} Semester</span>
-                  </div>
-                  <h3 className="font-serif font-bold text-xl text-[#1a1a1a] mb-2 group-hover:text-mouau-green transition-colors leading-snug">
-                    {material.courseCode}: {material.courseTitle}
-                  </h3>
-                  <p className="text-sm italic font-serif text-gray-500 mt-auto pt-8">
-                    Lecturer: {material.lecturerName}
-                  </p>
-                </button>
+                    <div className={`p-2 rounded-full transition-colors ${expandedId === material.id ? 'bg-mouau-green text-white' : 'text-gray-300 group-hover:text-mouau-green'}`}>
+                      {expandedId === material.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    </div>
+                  </button>
+
+                  <AnimatePresence>
+                    {expandedId === material.id && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-8 pb-8 pt-2 grid grid-cols-1 md:grid-cols-2 gap-10 border-t border-gray-50 bg-gray-50/30">
+                          <div className="space-y-4">
+                            <h4 className="text-[11px] font-bold text-mouau-green uppercase tracking-[2.5px] flex items-center gap-2">
+                              <Star size={14} className="fill-mouau-green" />
+                              Key Academic Topics
+                            </h4>
+                            <ul className="space-y-3">
+                              {(material.keyTopics || ['Detailed topics extraction in progress...', 'Contact coordinator for full syllabus', 'Core foundations and concepts']).map((topic, idx) => (
+                                <li key={idx} className="flex items-center gap-3 text-sm text-gray-700 font-medium">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-mouau-gold shrink-0" />
+                                  {topic}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          
+                          <div className="flex flex-col h-full">
+                            <h4 className="text-[11px] font-bold text-[#999] uppercase tracking-[2.5px] mb-4">Brief Resource Overview</h4>
+                            <p className="text-gray-600 text-sm italic font-serif leading-relaxed flex-1">
+                              {material.overview || "This comprehensive academic resource provides a foundational look into the core principles of the course, curated specifically for MOUAU standards."}
+                            </p>
+                            
+                            <button
+                              onClick={() => navigate(`/course/${material.id}`)}
+                              className="mt-6 flex items-center justify-center gap-2 bg-mouau-green text-white px-6 py-3 rounded-[4px] font-bold text-xs uppercase tracking-widest hover:bg-[#00522b] transition-all self-start shadow-lg shadow-mouau-green/20"
+                            >
+                              <ExternalLink size={14} />
+                              Read Now
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               ))}
             </div>
           )}
@@ -167,15 +239,38 @@ const StudentDashboard: React.FC = () => {
 
         {/* Latest Announcements */}
         <section className="bg-gray-50 rounded-[4px] p-10 border border-gray-100">
-          <h2 className="text-xl font-serif font-bold text-[#1a1a1a] mb-6">Internal Bulletins</h2>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-xl font-serif font-bold text-[#1a1a1a] flex items-center gap-3">
+              <Bell className="text-mouau-gold" size={24} />
+              Internal Bulletins
+            </h2>
+            <span className="text-[10px] bg-mouau-gold/20 text-mouau-gold px-3 py-1 rounded-full font-bold uppercase tracking-widest">{bulletins.length} Active Notice{bulletins.length !== 1 ? 's' : ''}</span>
+          </div>
+
           <div className="space-y-6">
-            <div className="flex gap-6 p-6 rounded-[4px] bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="bg-mouau-green w-1.5 rounded-full shrink-0" />
-              <div>
-                <h4 className="font-serif font-bold text-[#1a1a1a] text-lg">CSC 301 Midterm Postponed</h4>
-                <p className="text-sm text-[#666666] mt-2 leading-relaxed">Due to the state-wide public holiday, the algorithms exam has been rescheduled to next Friday. Please adjust your study calendar accordingly.</p>
+            {bulletins.length === 0 ? (
+              <div className="text-center py-10 text-gray-400 italic font-serif">
+                No active notices for the current session.
               </div>
-            </div>
+            ) : (
+              bulletins.map((bulletin) => (
+                <motion.div 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  key={bulletin.id} 
+                  className="flex gap-6 p-6 rounded-[4px] bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group"
+                >
+                  <div className="absolute top-0 left-0 w-1 h-full bg-mouau-green group-hover:w-2 transition-all" />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-serif font-bold text-[#1a1a1a] text-lg">Broadcast from {bulletin.lecturerName}</h4>
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{bulletin.createdAt?.toDate ? new Date(bulletin.createdAt.toDate()).toLocaleDateString() : 'Just now'}</span>
+                    </div>
+                    <p className="text-sm text-[#666666] leading-relaxed font-medium">{bulletin.content}</p>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
         </section>
       </main>
