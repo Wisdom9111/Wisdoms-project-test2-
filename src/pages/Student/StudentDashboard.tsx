@@ -11,16 +11,17 @@ const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewingLevel, setViewingLevel] = useState<string>(user?.level || '300L');
+  const [viewLevel, setViewLevel] = useState<string>(user?.level || '300L');
 
   useEffect(() => {
     if (!user) return;
 
-    // Real-time listener for materials matching selected level
+    setLoading(true);
+    // Real-time listener for materials matching selected view level
     const materialsRef = collection(db, 'materials');
     const q = query(
       materialsRef, 
-      where('level', '==', viewingLevel),
+      where('level', '==', viewLevel),
       orderBy('createdAt', 'desc')
     );
 
@@ -37,7 +38,13 @@ const StudentDashboard: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, viewLevel]);
+
+  useEffect(() => {
+    if (!user) return;
+    // Reset view level to user's permanent level if it changes (e.g. login)
+    setViewLevel(user.level || '300L');
+  }, [user?.uid]);
 
   const handleLogout = async () => {
     await logout();
@@ -77,28 +84,30 @@ const StudentDashboard: React.FC = () => {
             <h1 className="text-4xl font-serif font-bold text-[#1a1a1a] mt-2 tracking-tight">Welcome, {user?.name}</h1>
           </div>
           <div className="flex gap-4">
-            <div className="bg-white px-5 py-3 rounded-[4px] border border-gray-100 shadow-sm flex items-center gap-3">
-              <Star className="text-mouau-gold fill-mouau-gold" size={18} />
-              <span className="font-bold text-[#1a1a1a]">4.2 GPA</span>
-            </div>
-            
             <div className="relative group">
-              <div className="bg-white px-5 py-3 rounded-[4px] border border-gray-100 shadow-sm flex items-center gap-3 cursor-pointer hover:border-mouau-green transition-colors">
+              <button className="bg-white px-5 py-3 rounded-[4px] border border-gray-100 shadow-sm flex items-center gap-3 cursor-pointer hover:border-mouau-green transition-all group-hover:shadow-md">
                 <Clock className="text-mouau-green" size={18} />
-                <span className="text-sm font-bold text-[#666666] uppercase tracking-wide">{viewingLevel} Section</span>
-                <ChevronDown size={14} className="text-gray-400" />
-              </div>
+                <span className="text-sm font-bold text-[#666666] uppercase tracking-wide">{viewLevel} Section</span>
+                <ChevronDown size={14} className="text-gray-400 group-hover:rotate-180 transition-transform" />
+              </button>
               
-              <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-gray-100 shadow-xl rounded-[4px] py-2 hidden group-hover:block z-20">
-                {['100L', '200L', '300L', '400L', '500L'].map((lvl) => (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 shadow-2xl rounded-[4px] py-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="px-4 pb-2 mb-2 border-b border-gray-50">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Select Level</span>
+                </div>
+                {['100L', '200L', '300L', '400L'].map((lvl) => (
                   <button
                     key={lvl}
-                    onClick={() => setViewingLevel(lvl)}
-                    className={`w-full text-left px-4 py-2 text-sm font-bold hover:bg-mouau-green/5 transition-colors ${viewingLevel === lvl ? 'text-mouau-green' : 'text-gray-600'}`}
+                    onClick={() => setViewLevel(lvl)}
+                    className={`w-full text-left px-5 py-2.5 text-sm font-bold transition-colors flex items-center justify-between ${viewLevel === lvl ? 'text-mouau-green bg-mouau-green/5' : 'text-gray-600 hover:bg-gray-50'}`}
                   >
-                    {lvl} Learning Path
+                    <span>{lvl} Course Materials</span>
+                    {viewLevel === lvl && <div className="w-1.5 h-1.5 rounded-full bg-mouau-green" />}
                   </button>
                 ))}
+                <div className="mt-2 pt-2 border-t border-gray-50 px-4">
+                  <p className="text-[9px] text-gray-400 italic">Temporary Session View</p>
+                </div>
               </div>
             </div>
           </div>
@@ -107,7 +116,7 @@ const StudentDashboard: React.FC = () => {
         {/* Dynamic Learning Section */}
         <section>
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-serif font-bold text-[#1a1a1a]">Curated learning for {viewingLevel}</h2>
+            <h2 className="text-2xl font-serif font-bold text-[#1a1a1a]">Curated learning for {viewLevel}</h2>
             <div className="flex items-center gap-2 text-mouau-green text-sm font-bold uppercase tracking-widest">
               <Layout size={16} />
               <span>{materials.length} Materials</span>
@@ -127,7 +136,7 @@ const StudentDashboard: React.FC = () => {
               </div>
               <h3 className="text-xl font-serif font-bold text-gray-900">No courses uploaded yet</h3>
               <p className="text-gray-500 mt-2 max-w-sm mx-auto">
-                No courses have been uploaded for {viewingLevel} yet. Check back later!
+                No courses have been uploaded for {viewLevel} yet. Check back later!
               </p>
             </div>
           ) : (

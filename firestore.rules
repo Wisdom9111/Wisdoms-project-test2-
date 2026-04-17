@@ -24,7 +24,7 @@ service cloud.firestore {
     //   - lecturerName: string (required)
     //   - lecturerUid: string (required, immutable)
     //   - fileUrl: string (required, uri)
-    //   - level: string (required, '100L'...'500L')
+    //   - level: string (required, '100L'...'400L')
     //   - semester: string (required, 'First' | 'Second')
     //   - createdAt: timestamp (required)
     //
@@ -63,7 +63,7 @@ service cloud.firestore {
              data.email == request.auth.token.email &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.role in ['student', 'lecturer'] &&
-             (!('level' in data) || data.level in ['100L', '200L', '300L', '400L', '500L']);
+             (!('level' in data) || data.level in ['100L', '200L', '300L', '400L']);
     }
 
     function isValidMaterial(data) {
@@ -73,7 +73,7 @@ service cloud.firestore {
              data.lecturerName is string && data.lecturerName.size() > 0 &&
              data.lecturerUid == request.auth.uid &&
              isValidUrl(data.fileUrl) &&
-             data.level in ['100L', '200L', '300L', '400L', '500L'] &&
+             data.level in ['100L', '200L', '300L', '400L'] &&
              data.semester in ['First', 'Second'] &&
              data.createdAt is timestamp;
     }

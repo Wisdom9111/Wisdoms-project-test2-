@@ -220,7 +220,7 @@ const UploadMaterial: React.FC = () => {
                   value={formData.level}
                   onChange={e => setFormData({...formData, level: e.target.value})}
                 >
-                  {['100L', '200L', '300L', '400L', '500L'].map(l => (
+                  {['100L', '200L', '300L', '400L'].map(l => (
                     <option key={l} value={l}>{l}</option>
                   ))}
                 </select>

@@ -11,7 +11,7 @@
         "lecturerName": { "type": "string" },
         "lecturerUid": { "type": "string" },
         "fileUrl": { "type": "string", "format": "uri" },
-        "level": { "type": "string", "enum": ["100L", "200L", "300L", "400L", "500L"] },
+        "level": { "type": "string", "enum": ["100L", "200L", "300L", "400L"] },
         "semester": { "type": "string", "enum": ["First", "Second"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
@@ -26,7 +26,7 @@
         "email": { "type": "string", "format": "email" },
         "name": { "type": "string" },
         "role": { "type": "string", "enum": ["student", "lecturer"] },
-        "level": { "type": "string", "enum": ["100L", "200L", "300L", "400L", "500L"], "description": "Applicable for students" }
+        "level": { "type": "string", "enum": ["100L", "200L", "300L", "400L"], "description": "Applicable for students" }
       },
       "required": ["uid", "email", "name", "role"]
     }

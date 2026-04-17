@@ -144,7 +144,7 @@ const Register: React.FC = () => {
                     onChange={(e) => setLevel(e.target.value)}
                     className="w-full px-4 py-3.5 border-[1.5px] border-[#e0e0e0] rounded-[4px] text-[16px] outline-none focus:border-mouau-green bg-white"
                   >
-                    {['100L', '200L', '300L', '400L', '500L'].map(l => (
+                    {['100L', '200L', '300L', '400L'].map(l => (
                       <option key={l} value={l}>{l}</option>
                     ))}
                   </select>
