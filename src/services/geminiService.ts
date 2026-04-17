@@ -18,10 +18,17 @@ export async function analyzeMaterial(courseCode: string, courseTitle: string, b
   try {
     const contents: any[] = [
       {
-        text: `Drafting course details for a university portal at MOUAU (Michael Okpara University of Agriculture, Umudike). 
-        Course: ${courseCode} - ${courseTitle}.
-        Extract the actual headings from this text for Topics and summarize ONLY this document in 2 lines.
-        Return the output as a clean JSON object.`
+        text: `You are an expert MOUAU Computer Science Professor. 
+  I am providing you with the text content of a courseware PDF for Course: ${courseCode} - ${courseTitle}.
+  
+  TASK:
+  1. Identify the actual HEADINGS used in this document for "Key Academic Topics".
+  2. Write a 2-line "Brief Resource Overview" that summarizes only what is in this text.
+  3. Extract the FULL RAW TEXT of the document for indexing.
+  
+  STRICT RULE: Do not use any outside information. If the text is about "Data Structures", do not talk about "Database Systems". 
+  
+  FORMAT: Return as JSON with keys: 'topics' (array), 'overview' (string), and 'extractedText' (string).`
       }
     ];
 
@@ -38,36 +45,32 @@ export async function analyzeMaterial(courseCode: string, courseTitle: string, b
       model: "gemini-flash-latest",
       contents: { parts: contents },
       config: {
-        systemInstruction: `You are a MOUAU Professor. Analyze academic documents with extreme precision. 
-        Extract the REAL headings from the document for the KEY ACADEMIC TOPICS. 
-        Provide a 2-line summary. 
-        Finally, extract the FULL RAW TEXT of the document for indexing.`,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            keyTopics: {
+            topics: {
               type: Type.ARRAY,
               items: { type: Type.STRING },
-              description: "3 key topics extracted from the headings of the material"
+              description: "Headings extracted from the document"
             },
             overview: {
               type: Type.STRING,
-              description: "A professional 2-line summary"
+              description: "A 2-line summary strictly based on the text"
             },
             extractedText: {
               type: Type.STRING,
               description: "The full raw text extracted from the document"
             }
           },
-          required: ["keyTopics", "overview", "extractedText"]
+          required: ["topics", "overview", "extractedText"]
         }
       }
     });
 
     const result = JSON.parse(response.text);
     return {
-      keyTopics: result.keyTopics.slice(0, 3),
+      keyTopics: result.topics.slice(0, 3),
       overview: result.overview,
       extractedText: result.extractedText
     };
