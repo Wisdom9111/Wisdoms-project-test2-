@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield, AlertTriangle, Lock } from 'lucide-react';
+import { ArrowLeft, Shield, AlertTriangle, Lock, Sparkles, Loader2, List, BookOpen } from 'lucide-react';
 import { db } from '../../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { Material } from '../../types';
 import { Worker, Viewer } from '@react-pdf-viewer/core';
 import '@react-pdf-viewer/core/lib/styles/index.css';
+import { motion, AnimatePresence } from 'motion/react';
 
 const SecureViewer: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +14,10 @@ const SecureViewer: React.FC = () => {
   const [material, setMaterial] = useState<Material | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<{topics: string[], overview: string} | null>(null);
 
   useEffect(() => {
     // Disable right-click for security
@@ -25,7 +30,13 @@ const SecureViewer: React.FC = () => {
         const docRef = doc(db, 'materials', id);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setMaterial({ id: docSnap.id, ...docSnap.data() } as Material);
+          const matData = { id: docSnap.id, ...docSnap.data() } as Material;
+          setMaterial(matData);
+          
+          // Pre-load saved analysis if exists
+          if (matData.keyTopics && matData.overview) {
+            setAiAnalysis({ topics: matData.keyTopics, overview: matData.overview });
+          }
         } else {
           setError('Material not found.');
         }
@@ -43,6 +54,55 @@ const SecureViewer: React.FC = () => {
       document.removeEventListener('contextmenu', handleContextMenu);
     };
   }, [id]);
+
+  const generateAiSummary = async () => {
+    if (!material) return;
+    
+    setIsAiPanelOpen(true);
+    
+    // Skip if we already generated it
+    if (aiAnalysis) return;
+
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/ai-summary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileUrl: material.fileUrl,
+          courseCode: material.courseCode,
+          courseTitle: material.courseTitle
+        }),
+      });
+
+      if (!res.ok) throw new Error('AI analysis failed');
+      const data = await res.json();
+      
+      setAiAnalysis({ topics: data.topics, overview: data.overview });
+
+      // Cache the analysis to Firestore so it loads instantly next time
+      try {
+        await updateDoc(doc(db, 'materials', material.id), {
+          keyTopics: data.topics,
+          overview: data.overview
+        });
+      } catch (fbErr) {
+        console.warn('Could not cache AI response', fbErr);
+      }
+      
+    } catch (err) {
+      console.error(err);
+      // Fallback silently if it completely crashes so we don't break the UI
+      setAiAnalysis({
+        topics: ['Overview', 'Fundamentals', 'Document Structure'],
+        overview: 'This document contains securely formatted academic material. The AI was temporarily unable to parse the precise content, but you may read the document manually.'
+      });
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -65,38 +125,47 @@ const SecureViewer: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] flex flex-col select-none">
+    <div className="min-h-screen bg-[#1a1a1a] flex flex-col select-none relative overflow-hidden">
       {/* Secure Header */}
-      <header className="bg-white px-6 py-4 flex items-center justify-between border-b border-gray-100 sticky top-0 z-20">
-        <div className="flex items-center gap-6">
+      <header className="bg-white px-2 sm:px-6 py-4 flex items-center justify-between border-b border-gray-100 z-30">
+        <div className="flex items-center gap-2 sm:gap-6">
           <button 
             onClick={() => navigate('/student-dashboard')}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors text-mouau-green"
           >
             <ArrowLeft size={20} />
           </button>
-          <div className="border-l border-gray-200 pl-6">
-            <h1 className="text-lg font-serif font-bold text-gray-900 truncate max-w-[300px]">
+          <div className="border-l border-gray-200 pl-4 sm:pl-6">
+            <h1 className="text-sm sm:text-lg font-serif font-bold text-gray-900 truncate max-w-[150px] sm:max-w-[400px]">
               {material.courseCode}: {material.courseTitle}
             </h1>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
               Digital Courseware • {material.lecturerName}
             </p>
           </div>
         </div>
         
-        <div className="flex items-center gap-4 px-4 py-2 bg-mouau-green/5 rounded-full border border-mouau-green/20">
-          <Shield size={16} className="text-mouau-green" />
-          <span className="text-[11px] font-bold text-mouau-green uppercase tracking-wider">Secure Access Protocol Active</span>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={generateAiSummary}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full font-bold text-[11px] uppercase tracking-wider hover:shadow-[0_0_15px_rgba(147,51,234,0.4)] transition-all cursor-pointer"
+          >
+            <Sparkles size={14} />
+            <span className="hidden sm:inline">Demic_AI Scan</span>
+            <span className="sm:hidden">AI Scan</span>
+          </button>
+          
+          <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-mouau-green/5 rounded-full border border-mouau-green/20">
+            <Shield size={14} className="text-mouau-green" />
+            <span className="text-[10px] font-bold text-mouau-green uppercase tracking-wider">Secure</span>
+          </div>
         </div>
       </header>
 
-      {/* Reader Container */}
-      <div className="flex-1 overflow-hidden relative group">
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Anti-Copy Overlay Layer */}
-        <div className="absolute inset-0 z-10 pointer-events-none" style={{ background: 'transparent' }}>
-            {/* This transparent div captures nothing but visual inspection is hard */}
-        </div>
+        <div className="absolute inset-0 z-10 pointer-events-none bg-transparent" />
         
         {/* Printable Blocking CSS */}
         <style dangerouslySetInnerHTML={{ __html: `
@@ -109,39 +178,127 @@ const SecureViewer: React.FC = () => {
           }
         `}} />
 
-        <div className="h-full w-full max-w-5xl mx-auto bg-white shadow-2xl relative">
-          {/* Transparent Overlay to Prevent Dragging/Selecting directly on the viewer */}
+        {/* PDF Reader Container */}
+        <div className="flex-1 h-full max-w-5xl mx-auto bg-white shadow-2xl relative transition-all duration-300">
           <div 
             className="absolute inset-0 z-10 cursor-default" 
             onContextMenu={(e) => e.preventDefault()}
           />
 
-          {/* Fallback to iframe if the sophisticated viewer fails, with an added security overlay */}
           <div className="h-full w-full relative">
             <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
               <div className="h-full overflow-auto secure-scrollbar">
-                <Viewer 
-                  fileUrl={material.fileUrl}
-                />
+                <Viewer fileUrl={material.fileUrl} />
               </div>
             </Worker>
-            
-            {/* If the viewer takes too long, we could provide an iframe fallback here, 
-                but for academic security at MOUAU, we stick to the React Viewer for better DRM control. */}
           </div>
           
           <div className="absolute bottom-6 right-6 z-20">
             <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md text-white px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest border border-white/10">
               <Lock size={12} />
-              Read-Only Restricted Mode
+              Read-Only
             </div>
           </div>
         </div>
+
+        {/* Sliding AI Panel */}
+        <AnimatePresence>
+          {isAiPanelOpen && (
+            <>
+              {/* Backdrop for mobile */}
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="lg:hidden absolute inset-0 bg-black/50 z-40 backdrop-blur-sm"
+                onClick={() => setIsAiPanelOpen(false)}
+              />
+              
+              <motion.div
+                initial={{ x: '100%', opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: '100%', opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="absolute right-0 top-0 bottom-0 w-full lg:w-[400px] z-50 bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.2)] border-l border-gray-100 flex flex-col"
+              >
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-br from-purple-50 to-white flex justify-between items-center">
+                  <div className="flex items-center gap-3 text-purple-700">
+                    <Sparkles size={24} className="animate-pulse" />
+                    <div>
+                      <h3 className="font-serif font-bold text-lg leading-tight">Demic_AI Overview</h3>
+                      <p className="text-[10px] uppercase tracking-widest font-bold opacity-60">Document Intelligence</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsAiPanelOpen(false)} className="p-2 hover:bg-purple-100 rounded-full text-purple-400 transition-colors">
+                    <ArrowLeft size={18} />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+                  {aiLoading ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-purple-400 blur-xl opacity-20 rounded-full" />
+                        <Loader2 size={40} className="text-purple-600 animate-spin relative z-10" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">Demic_AI is reading...</p>
+                        <p className="text-xs text-gray-500 mt-1">Analyzing hundreds of pages in seconds.</p>
+                      </div>
+                    </div>
+                  ) : aiAnalysis ? (
+                    <div className="space-y-8">
+                      {/* What you will learn */}
+                      <div className="bg-white p-5 rounded-[8px] shadow-sm border border-purple-100">
+                        <div className="flex items-center gap-2 text-purple-600 mb-3">
+                          <BookOpen size={16} />
+                          <h4 className="font-bold text-sm uppercase tracking-wider">What you will learn</h4>
+                        </div>
+                        <p className="text-gray-700 text-sm leading-relaxed font-medium">
+                          {aiAnalysis.overview}
+                        </p>
+                      </div>
+
+                      {/* Key Topics */}
+                      <div>
+                        <div className="flex items-center gap-2 text-gray-800 mb-4 px-1">
+                          <List size={16} className="text-mouau-green" />
+                          <h4 className="font-bold text-sm uppercase tracking-wider">Core Topics Covered</h4>
+                        </div>
+                        <div className="space-y-3">
+                          {aiAnalysis.topics.map((topic, idx) => (
+                            <motion.div 
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: idx * 0.1 }}
+                              key={idx} 
+                              className="bg-white p-4 rounded-[4px] border border-gray-100 shadow-sm flex items-start gap-4 hover:border-mouau-green hover:shadow-md transition-all"
+                            >
+                              <div className="bg-mouau-green/10 text-mouau-green w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                                {idx + 1}
+                              </div>
+                              <span className="font-serif font-bold text-gray-800">{topic}</span>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+                
+                <div className="p-4 bg-gray-900 border-t border-gray-800 text-center">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex justify-center items-center gap-2">
+                    <Sparkles size={10} className="text-purple-400" />
+                    Generated by Demic_AI
+                  </span>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
       
       {/* Footer Warning */}
-      <footer className="bg-black text-[10px] text-gray-500 py-3 text-center uppercase tracking-widest border-t border-white/5 font-medium">
-        © MOUAU Digital Library • Unauthorized Redistribution is strictly prohibited • Monitored Session
+      <footer className="bg-black text-[10px] text-gray-500 py-3 text-center uppercase tracking-widest border-t border-white/5 font-medium z-30">
+        © MOUAU Digital Library • Unauthorized Redistribution is strictly prohibited
       </footer>
     </div>
   );

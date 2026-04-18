@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { QuizQuestion } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -6,12 +7,6 @@ export interface AnalysisResult {
   keyTopics: string[];
   overview: string;
   extractedText: string;
-}
-
-export interface QuizQuestion {
-  question: string;
-  options: string[];
-  correctAnswer: number; // Index of the correct option
 }
 
 export async function analyzeMaterial(courseCode: string, courseTitle: string, base64Pdf?: string): Promise<AnalysisResult> {
@@ -68,7 +63,7 @@ export async function analyzeMaterial(courseCode: string, courseTitle: string, b
       }
     });
 
-    const result = JSON.parse(response.text);
+    const result = JSON.parse(response.text || "{}");
     return {
       keyTopics: result.topics.slice(0, 3),
       overview: result.overview,
@@ -202,7 +197,7 @@ export async function researchAssistantQuery(query: string, documents: { code: s
       Maintain a professional, academic tone suitable for Michael Okpara University of Agriculture, Umudike.`
     });
 
-    return response.text;
+    return response.text || "";
   } catch (error) {
     console.error("Research assistant error:", error);
     return "I am currently unable to access the academic library. Please try again shortly.";
