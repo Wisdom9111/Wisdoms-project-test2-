@@ -389,39 +389,38 @@ const SecureViewer: React.FC = () => {
                            )}
                          </div>
                       </div>
+                      
+                      {/* Chat Input Field (Moved directly below the conversation to follow immediately after info) */}
+                      <div className="shrink-0 bg-transparent py-2">
+                        <form onSubmit={sendDocQuestion} className="flex items-end gap-2 relative">
+                          <div className="flex-1 relative">
+                            <textarea
+                              rows={2}
+                              value={chatInput}
+                              onChange={(e) => setChatInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  sendDocQuestion();
+                                }
+                              }}
+                              placeholder="Ask about this document..."
+                              className="w-full bg-white shadow-sm border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 resize-none pr-12 font-medium"
+                            />
+                          </div>
+                          <button 
+                            type="submit"
+                            disabled={!chatInput.trim() || chatLoading}
+                            className="absolute right-2 bottom-2 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <Send size={16} />
+                          </button>
+                        </form>
+                      </div>
+
                     </div>
                   ) : null}
                 </div>
-                
-                {/* Chat Input Field (Fixed at bottom via Flex) */}
-                {aiAnalysis && (
-                  <div className="shrink-0 bg-white border-t border-gray-100 p-4">
-                    <form onSubmit={sendDocQuestion} className="flex items-end gap-2 relative">
-                      <div className="flex-1 relative">
-                        <textarea
-                          rows={2}
-                          value={chatInput}
-                          onChange={(e) => setChatInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              sendDocQuestion();
-                            }
-                          }}
-                          placeholder="Ask about this document..."
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 resize-none pr-12 font-medium"
-                        />
-                      </div>
-                      <button 
-                        type="submit"
-                        disabled={!chatInput.trim() || chatLoading}
-                        className="absolute right-2 bottom-2 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <Send size={16} />
-                      </button>
-                    </form>
-                  </div>
-                )}
                 
                 <div className="shrink-0 h-10 bg-gray-900 border-t border-gray-800 flex items-center justify-center">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex justify-center items-center gap-2">
