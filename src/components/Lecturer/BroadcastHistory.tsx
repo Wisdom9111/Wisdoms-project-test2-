@@ -57,8 +57,9 @@ const BroadcastHistory: React.FC<BroadcastHistoryProps> = ({ notices, onNoticeDe
                   className={`p-1.5 transition-colors rounded-full ${
                     deletingId === notice.id 
                       ? 'text-gray-400 cursor-not-allowed' 
-                      : 'text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100'
+                      : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
                   }`}
+                  aria-label="Delete Broadcast"
                 >
                   {deletingId === notice.id ? (
                     <Loader2 size={16} className="animate-spin text-mouau-green" />
