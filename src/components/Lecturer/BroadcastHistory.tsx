@@ -54,10 +54,10 @@ const BroadcastHistory: React.FC<BroadcastHistoryProps> = ({ notices, onNoticeDe
                 <button 
                   onClick={() => deleteNotice(notice.id)}
                   disabled={deletingId === notice.id}
-                  className={`p-1.5 transition-colors rounded-full ${
+                  className={`p-2 transition-all rounded-[4px] shadow-sm flex items-center justify-center ${
                     deletingId === notice.id 
-                      ? 'text-gray-400 cursor-not-allowed' 
-                      : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                      : 'bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 border border-red-100'
                   }`}
                   aria-label="Delete Broadcast"
                 >
