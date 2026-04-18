@@ -7,9 +7,13 @@ import { put, del } from '@vercel/blob';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import multer from 'multer';
 import cors from 'cors';
+import { GoogleGenAI, Type } from "@google/genai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Initialize AI SDK
+const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
 async function startServer() {
   console.log('Initializing MOUAU CMS Server...');
@@ -77,6 +81,140 @@ async function startServer() {
     } catch (error: any) {
       console.error('Delete error:', error);
       res.status(500).json({ error: error.message || 'Error deleting blob' });
+    }
+  });
+
+  // AI Summary endpoint
+  app.post('/api/ai-summary', async (req, res) => {
+    if (!ai) return res.status(500).json({ error: 'Gemini API not configured on server' });
+
+    const { fileUrl, courseCode, courseTitle } = req.body;
+
+    if (!fileUrl) {
+      return res.status(400).json({ error: 'File URL is required' });
+    }
+
+    try {
+      // 1. Fetch the PDF securely from the Blob URL
+      const fileResponse = await fetch(fileUrl);
+      if (!fileResponse.ok) {
+        throw new Error('Failed to fetch document from secure storage');
+      }
+
+      const arrayBuffer = await fileResponse.arrayBuffer();
+      const base64Data = Buffer.from(arrayBuffer).toString('base64');
+
+      // 2. Pass to Gemini API
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: {
+          parts: [
+            {
+              text: `You are an AI Academic Assistant for MOUAU. 
+I am providing you with a PDF document for Course: ${courseCode} - ${courseTitle}.
+TASK:
+1. Identify the key topics or headings taught in this document.
+2. Provide a brief 2-3 sentence overview of what a student will learn after finishing this document.
+Return ONLY valid JSON.`
+            },
+            {
+              inlineData: {
+                mimeType: "application/pdf",
+                data: base64Data
+              }
+            }
+          ]
+        },
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              topics: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: "3-5 Main headings or topics found in the document"
+              },
+              overview: {
+                type: Type.STRING,
+                description: "A brief summary of what the student will learn"
+              }
+            },
+            required: ["topics", "overview"]
+          }
+        }
+      });
+
+      // Handle both getter/method depending on version of SDK
+      const textResponse = typeof response.text === 'function' ? response.text() : response.text;
+      const result = JSON.parse(textResponse || "{}");
+      return res.status(200).json(result);
+
+    } catch (error: any) {
+      const isInvalidKey = error?.status === 400 || error?.message?.includes('API key') || error?.message?.includes('API_KEY_INVALID');
+      
+      if (!isInvalidKey) {
+        console.error("AI Summary Error:", error);
+      } else {
+        console.warn("AI Summary Warning: Missing or Invalid API Key.");
+      }
+      
+      // Fallback gracefully so we don't break the UI panel
+      return res.status(200).json({ 
+        topics: isInvalidKey ? ['Configuration Required'] : ['Error Processing Document'],
+        overview: isInvalidKey 
+          ? "⚠️ Your Gemini API key is missing or invalid on your server (Vercel). Please update your Vercel Environment Variables to include a valid GEMINI_API_KEY."
+          : "An unexpected error occurred while analyzing this document. " + error.message
+      });
+    }
+  });
+
+  // AI Chat endpoint
+  app.post('/api/ai-chat', async (req, res) => {
+    if (!ai) return res.status(500).json({ error: 'Gemini API not configured on server' });
+
+    const { query, libraryContext } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ error: 'Query is required' });
+    }
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `You are Demic_AI, an expert academic assistant for Michael Okpara University of Agriculture, Umudike (MOUAU).
+
+STUDENT OUESTION: "${query}"
+
+MOUAU COURSE LIBRARY CONTEXT:
+${libraryContext}
+
+INSTRUCTIONS:
+1. Provide a direct, helpful, and academic answer to the student's question.
+2. If the student's question directly relates to any of the courses listed in the MOUAU COURSE LIBRARY CONTEXT above, you MUST explicitly recommend that they read that document (e.g., "For more details, please refer to the uploaded document: [Course Code] - [Course Title] uploaded by [Lecturer Name]").
+3. If the question is general or not found in the library, answer the question accurately using your general academic knowledge, but briefly mention that there are currently no specific lecture notes on this exact topic in the library.
+4. Keep the response concise, formatted beautifully in Markdown, and easy to read.
+5. End your response with the exact signature phrase: "Generated by Demic_AI" on a new line.`
+      });
+
+      const textResponse = typeof response.text === 'function' ? response.text() : response.text;
+      return res.status(200).json({ answer: textResponse });
+
+    } catch (error: any) {
+      const isInvalidKey = error?.status === 400 || error?.message?.includes('API key') || error?.message?.includes('API_KEY_INVALID');
+      
+      if (!isInvalidKey) {
+        console.error("AI Chat Error:", error);
+      } else {
+        console.warn("AI Chat Warning: Missing or Invalid API Key.");
+      }
+
+      const errorMessage = isInvalidKey
+        ? "⚠️ **API Configuration Error**\nYour Gemini API key is either invalid or missing. If you have deployed this project to Vercel, please navigate to your Vercel Dashboard -> Settings -> Environment Variables, and ensure `GEMINI_API_KEY` is set perfectly with no extra spaces or quotes."
+        : "Sorry, I am currently unreachable due to a technical error. Please try again later.";
+        
+      // Ensure we always return 200 inside chat so it displays cleanly as the AI's response instead of failing
+      return res.status(200).json({ answer: errorMessage });
     }
   });
 
