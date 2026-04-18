@@ -6,7 +6,6 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { analyzeMaterial } from '../../services/geminiService';
 
 const UploadMaterial: React.FC = () => {
   const { user } = useAuth();
@@ -64,20 +63,7 @@ const UploadMaterial: React.FC = () => {
     setSuccess(false);
 
     try {
-      // 1. Convert file to base64 for AI scanning if it's a PDF
-      let base64File = '';
-      if (selectedFile.type === 'application/pdf') {
-        base64File = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const result = reader.result as string;
-            resolve(result.split(',')[1]);
-          };
-          reader.readAsDataURL(selectedFile);
-        });
-      }
-
-      // 2. Upload file using Vercel Blob client-side SDK
+      // 1. Upload file using Vercel Blob client-side SDK
       const newBlob = await upload(selectedFile.name, selectedFile, {
         access: 'public',
         handleUploadUrl: '/api/upload',
@@ -88,14 +74,10 @@ const UploadMaterial: React.FC = () => {
 
       const secureUrl = newBlob.url;
 
-      // 3. AI Analysis of the material (Passing PDF base64 if available)
-      const aiAnalysis = await analyzeMaterial(formData.courseCode, formData.courseTitle, base64File);
-
-      // 4. Save metadata to Firestore
+      // 2. Save metadata to Firestore (Bypassing AI analysis)
       try {
         await addDoc(collection(db, 'materials'), {
           ...formData,
-          ...aiAnalysis,
           fileUrl: secureUrl,
           fileName: selectedFile.name,
           lecturerName: user.name,
