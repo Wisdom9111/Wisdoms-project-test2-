@@ -14,22 +14,33 @@ const StudentDashboard: React.FC = () => {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewLevel, setViewLevel] = useState<string>(() => {
-    return sessionStorage.getItem('activeLevel') || user?.level || '100L';
+    try {
+      return sessionStorage.getItem('activeLevel') || user?.level || '100L';
+    } catch (e) {
+      return user?.level || '100L';
+    }
   });
 
   useEffect(() => {
     if (viewLevel) {
-      sessionStorage.setItem('activeLevel', viewLevel);
+      try {
+        sessionStorage.setItem('activeLevel', viewLevel);
+      } catch (e) {}
     }
   }, [viewLevel]);
 
   // Sync viewLevel with user.level if it's the first time it loads and nothing is in session
   useEffect(() => {
-    const savedLevel = sessionStorage.getItem('activeLevel');
-    if (!savedLevel && user?.level) {
-      setViewLevel(user.level);
+    try {
+      const savedLevel = sessionStorage.getItem('activeLevel');
+      if (!savedLevel && user?.level) {
+        setViewLevel(user.level);
+      }
+    } catch (e) {
+      if (user?.level) setViewLevel(user.level);
     }
   }, [user?.level]);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -91,18 +102,24 @@ const StudentDashboard: React.FC = () => {
 
   useEffect(() => {
     if (!user) return;
-    // Load from sessionStorage if exists, otherwise use user's level
-    const sessionLevel = sessionStorage.getItem('activeLevel');
-    if (sessionLevel) {
-      setViewLevel(sessionLevel);
-    } else if (user.level) {
-      setViewLevel(user.level);
+    try {
+      // Load from sessionStorage if exists, otherwise use user's level
+      const sessionLevel = sessionStorage.getItem('activeLevel');
+      if (sessionLevel) {
+        setViewLevel(sessionLevel);
+      } else if (user.level) {
+        setViewLevel(user.level);
+      }
+    } catch (e) {
+      if (user.level) setViewLevel(user.level);
     }
   }, [user?.uid, user?.level]);
 
   const handleLevelChange = (lvl: string) => {
     setViewLevel(lvl);
-    sessionStorage.setItem('activeLevel', lvl);
+    try {
+      sessionStorage.setItem('activeLevel', lvl);
+    } catch (e) {}
   };
 
   const handleLogout = async () => {
@@ -250,7 +267,7 @@ const StudentDashboard: React.FC = () => {
                               Key Academic Topics
                             </h4>
                             <ul className="space-y-3">
-                              {(material.keyTopics || ['Detailed topics extraction in progress...', 'Contact coordinator for full syllabus', 'Core foundations and concepts']).map((topic, idx) => (
+                              {(Array.isArray(material.keyTopics) && material.keyTopics.length > 0 ? material.keyTopics : ['Detailed topics extraction in progress...', 'Contact coordinator for full syllabus', 'Core foundations and concepts']).map((topic: string, idx: number) => (
                                 <li key={idx} className="flex items-center gap-3 text-sm text-gray-700 font-medium">
                                   <div className="w-1.5 h-1.5 rounded-full bg-mouau-gold shrink-0" />
                                   {topic}

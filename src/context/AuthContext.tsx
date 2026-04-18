@@ -107,7 +107,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    sessionStorage.removeItem('activeLevel');
+    try {
+      sessionStorage.removeItem('activeLevel');
+    } catch (e) {}
     await signOut(auth);
     setUser(null);
   };

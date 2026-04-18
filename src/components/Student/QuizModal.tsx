@@ -169,7 +169,7 @@ const QuizModal: React.FC<QuizModalProps> = ({ isOpen, onClose, courseTitle, mat
 
               {currentQuestion?.type === 'objective' ? (
                 <div className="grid grid-cols-1 gap-4">
-                  {currentQuestion.options?.map((opt, idx) => (
+                  {(Array.isArray(currentQuestion.options) ? currentQuestion.options : []).map((opt, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleMcqSelect(idx)}
