@@ -8,7 +8,6 @@ import { motion } from 'motion/react';
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'student' | 'lecturer'>('student');
   const { login } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
@@ -19,8 +18,9 @@ const Login: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await login(email, password, role);
-      if (role === 'lecturer') {
+      const user = await login(email, password);
+      // Determine navigation dynamically based on the fetched user role
+      if (user.role === 'lecturer') {
         navigate('/lecturer-dashboard');
       } else {
         navigate('/student-dashboard');
@@ -127,18 +127,6 @@ const Login: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
             />
-
-            <div className="space-y-2">
-              <label className="text-[12px] font-bold text-[#666666] uppercase tracking-wider block">Login Role</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as 'student' | 'lecturer')}
-                className="w-full px-4 py-3.5 border-[1.5px] border-[#e0e0e0] rounded-[4px] text-[16px] outline-none focus:border-mouau-green bg-white"
-              >
-                <option value="student">Student</option>
-                <option value="lecturer">Lecturer</option>
-              </select>
-            </div>
 
             <button
               type="submit"

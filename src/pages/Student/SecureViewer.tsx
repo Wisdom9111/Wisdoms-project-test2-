@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield, AlertTriangle, Lock, Sparkles, Loader2, List, BookOpen } from 'lucide-react';
+import { ArrowLeft, Shield, AlertTriangle, Lock, Sparkles, Loader2, List, BookOpen, MessageSquare, Send } from 'lucide-react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { Material } from '../../types';
 import { Worker, Viewer } from '@react-pdf-viewer/core';
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import { motion, AnimatePresence } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
 
 const SecureViewer: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +19,15 @@ const SecureViewer: React.FC = () => {
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<{topics: string[], overview: string} | null>(null);
+
+  // Document Chat State
+  const [docChatMessages, setDocChatMessages] = useState<{role: 'user' | 'ai', text: string}[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Document Page state
+  const [initialPage, setInitialPage] = useState(0);
 
   useEffect(() => {
     // Disable right-click for security
@@ -33,6 +43,12 @@ const SecureViewer: React.FC = () => {
           const matData = { id: docSnap.id, ...docSnap.data() } as Material;
           setMaterial(matData);
           
+          // Load document position tracking
+          const savedPage = localStorage.getItem(`mouau_doc_page_${id}`);
+          if (savedPage) {
+            setInitialPage(parseInt(savedPage, 10));
+          }
+
           // Pre-load saved analysis if exists
           if (matData.keyTopics && matData.overview) {
             setAiAnalysis({ topics: matData.keyTopics, overview: matData.overview });
@@ -101,6 +117,50 @@ const SecureViewer: React.FC = () => {
       });
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  const sendDocQuestion = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!chatInput.trim() || chatLoading || !material) return;
+
+    const question = chatInput.trim();
+    setChatInput('');
+    setDocChatMessages(prev => [...prev, { role: 'user', text: question }]);
+    setChatLoading(true);
+
+    // Auto-scroll chat to bottom
+    setTimeout(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }, 100);
+
+    try {
+      const res = await fetch('/api/ai-doc-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileUrl: material.fileUrl,
+          courseCode: material.courseCode,
+          courseTitle: material.courseTitle,
+          query: question,
+          history: docChatMessages
+        }),
+      });
+
+      if (!res.ok) throw new Error('Document chat failed');
+      const data = await res.json();
+      
+      setDocChatMessages(prev => [...prev, { role: 'ai', text: data.answer || data.error }]);
+    } catch (err) {
+      console.error(err);
+      setDocChatMessages(prev => [...prev, { role: 'ai', text: "⚠️ Unable to connect to Demic_AI. Please try again." }]);
+    } finally {
+      setChatLoading(false);
+      setTimeout(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }, 100);
     }
   };
 
@@ -188,7 +248,15 @@ const SecureViewer: React.FC = () => {
           <div className="h-full w-full relative">
             <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
               <div className="h-full overflow-auto secure-scrollbar">
-                <Viewer fileUrl={material.fileUrl} />
+                <Viewer 
+                  fileUrl={material.fileUrl} 
+                  initialPage={initialPage}
+                  onPageChange={(e) => {
+                    if (material.id) {
+                      localStorage.setItem(`mouau_doc_page_${material.id}`, e.currentPage.toString());
+                    }
+                  }}
+                />
               </div>
             </Worker>
           </div>
@@ -232,8 +300,8 @@ const SecureViewer: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
-                  {aiLoading ? (
+                <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 bg-gray-50/50 flex flex-col pt-4 pb-24">
+                  {aiLoading && !aiAnalysis ? (
                     <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
                       <div className="relative">
                         <div className="absolute inset-0 bg-purple-400 blur-xl opacity-20 rounded-full" />
@@ -245,7 +313,7 @@ const SecureViewer: React.FC = () => {
                       </div>
                     </div>
                   ) : aiAnalysis ? (
-                    <div className="space-y-8">
+                    <div className="space-y-6 flex-1 flex flex-col">
                       {/* What you will learn */}
                       <div className="bg-white p-5 rounded-[8px] shadow-sm border border-purple-100">
                         <div className="flex items-center gap-2 text-purple-600 mb-3">
@@ -280,11 +348,82 @@ const SecureViewer: React.FC = () => {
                           ))}
                         </div>
                       </div>
+                      
+                      {/* Document Chat Separator */}
+                      <div className="pt-8 border-t border-gray-200/60 mt-4 flex-1 flex flex-col">
+                         <div className="text-center mb-6">
+                           <span className="bg-gray-100 text-gray-500 py-1.5 px-4 rounded-full text-[10px] font-bold uppercase tracking-wider">Demic_AI Document Chat</span>
+                         </div>
+                         
+                         <div className="flex-1 space-y-4 pb-4">
+                           {docChatMessages.length === 0 ? (
+                             <div className="text-center text-sm text-gray-400 font-medium italic mt-4">
+                               Ask me a question about any lines, words, or topics confused about in this document...
+                             </div>
+                           ) : (
+                             docChatMessages.map((msg, i) => (
+                               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                 <div className={`max-w-[85%] rounded-2xl p-4 shadow-sm text-[13px] leading-relaxed ${
+                                   msg.role === 'user' 
+                                     ? 'bg-mouau-green text-white rounded-tr-sm' 
+                                     : 'bg-white text-gray-800 border border-purple-100 rounded-tl-sm'
+                                 }`}>
+                                   {msg.role === 'ai' ? (
+                                     <div className="markdown-body text-sm font-medium">
+                                       <ReactMarkdown>{msg.text}</ReactMarkdown>
+                                     </div>
+                                   ) : (
+                                     <span className="font-medium">{msg.text}</span>
+                                   )}
+                                 </div>
+                               </div>
+                             ))
+                           )}
+                           
+                           {chatLoading && (
+                             <div className="flex justify-start">
+                               <div className="max-w-[85%] bg-white border border-purple-100 rounded-2xl rounded-tl-sm p-4 shadow-sm">
+                                 <Loader2 size={16} className="animate-spin text-purple-500" />
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                      </div>
                     </div>
                   ) : null}
                 </div>
                 
-                <div className="p-4 bg-gray-900 border-t border-gray-800 text-center">
+                {/* Chat Input Field (Fixed at bottom) */}
+                {aiAnalysis && (
+                  <div className="absolute bottom-10 left-0 right-0 bg-white border-t border-gray-100 p-4 z-20">
+                    <form onSubmit={sendDocQuestion} className="flex items-end gap-2 relative">
+                      <div className="flex-1 relative">
+                        <textarea
+                          rows={2}
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              sendDocQuestion();
+                            }
+                          }}
+                          placeholder="Ask about this document..."
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 resize-none pr-12 font-medium"
+                        />
+                      </div>
+                      <button 
+                        type="submit"
+                        disabled={!chatInput.trim() || chatLoading}
+                        className="absolute right-4 bottom-3 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Send size={16} />
+                      </button>
+                    </form>
+                  </div>
+                )}
+                
+                <div className="absolute bottom-0 left-0 right-0 h-10 bg-gray-900 border-t border-gray-800 flex items-center justify-center z-20">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex justify-center items-center gap-2">
                     <Sparkles size={10} className="text-purple-400" />
                     Generated by Demic_AI

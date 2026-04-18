@@ -7,7 +7,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string, role: Role) => Promise<void>;
+  login: (email: string, password: string, role?: Role) => Promise<User>;
   register: (email: string, password: string, name: string, role: Role, level?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string, role: Role) => {
+  const login = async (email: string, password: string, role?: Role): Promise<User> => {
     try {
       const res = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = res.user;
@@ -52,29 +52,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const docRef = doc(db, 'users', firebaseUser.uid);
       const docSnap = await getDoc(docRef);
       
+      let fetchedUser: User;
       if (docSnap.exists()) {
-        const userData = docSnap.data() as User;
-        // Verify role matches if necessary, but usually we just trust the DB
-        setUser(userData);
+        fetchedUser = docSnap.data() as User;
+        setUser(fetchedUser);
       } else {
         // Just in case auth exists but profile doesn't
-        const userData: User = {
+        fetchedUser = {
           uid: firebaseUser.uid,
           email,
-          role,
+          role: role || 'student',
           name: email.split('@')[0],
         };
         try {
-          await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+          await setDoc(doc(db, 'users', firebaseUser.uid), fetchedUser);
         } catch (err) {
           handleFirestoreError(err, OperationType.WRITE, `users/${firebaseUser.uid}`);
         }
-        setUser(userData);
+        setUser(fetchedUser);
       }
+      return fetchedUser;
     } catch (error: any) {
       if (error?.code === 'permission-denied') {
-        // This is handled by handleFirestoreError inside the try/catch if it happened there,
-        // but if it happened elsewhere in the login process that we didn't explicitly wrap...
+        // Handled silently above
       }
       console.error("Auth error:", error.code || error.message);
       throw error;
