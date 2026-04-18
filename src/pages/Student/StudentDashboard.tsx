@@ -170,29 +170,21 @@ const StudentDashboard: React.FC = () => {
             <h1 className="text-4xl font-serif font-bold text-[#1a1a1a] mt-2 tracking-tight">Welcome, {user?.name || 'Student'}</h1>
           </div>
           <div className="flex gap-4">
-            <div className="relative group">
-              <button className="bg-white px-5 py-3 rounded-[4px] border border-gray-100 shadow-sm flex items-center gap-3 cursor-pointer hover:border-mouau-green transition-all group-hover:shadow-md">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Clock className="text-mouau-green" size={18} />
-                <span className="text-sm font-bold text-[#666666] uppercase tracking-wide">{viewLevel || '100L'} Section</span>
-              </button>
-              
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 shadow-2xl rounded-[4px] py-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <div className="px-4 pb-2 mb-2 border-b border-gray-50">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Select Level</span>
-                </div>
+              </div>
+              <select
+                value={viewLevel}
+                onChange={(e) => handleLevelChange(e.target.value)}
+                className="bg-white pl-12 pr-10 py-3 rounded-[4px] border border-gray-100 shadow-sm text-sm font-bold text-[#666666] uppercase tracking-wide cursor-pointer hover:border-mouau-green transition-all appearance-none outline-none focus:border-mouau-green focus:ring-1 focus:ring-mouau-green"
+              >
                 {['100L', '200L', '300L', '400L'].map((lvl) => (
-                  <button
-                    key={lvl}
-                    onClick={() => handleLevelChange(lvl)}
-                    className={`w-full text-left px-5 py-2.5 text-sm font-bold transition-colors flex items-center justify-between ${viewLevel === lvl ? 'text-mouau-green bg-mouau-green/5' : 'text-gray-600 hover:bg-gray-50'}`}
-                  >
-                    <span>{lvl} Course Materials</span>
-                    {viewLevel === lvl && <div className="w-1.5 h-1.5 rounded-full bg-mouau-green" />}
-                  </button>
+                  <option key={lvl} value={lvl}>{lvl} Section</option>
                 ))}
-                <div className="mt-2 pt-2 border-t border-gray-50 px-4">
-                  <p className="text-[9px] text-gray-400 italic">Temporary Session View</p>
-                </div>
+              </select>
+              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[5px] border-t-gray-400"></div>
               </div>
             </div>
           </div>
