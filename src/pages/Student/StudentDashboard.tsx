@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Book, Search, LogOut, Clock, Star, FileText, Layout, Info, ChevronDown, ChevronUp, ExternalLink, HelpCircle, Sparkles, Bell } from 'lucide-react';
+import { Book, Search, LogOut, Clock, Layout, Info, ExternalLink, Bell } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { Material, Bulletin } from '../../types';
-import { motion, AnimatePresence } from 'motion/react';
-import QuizModal from '../../components/Student/QuizModal';
+import { motion } from 'motion/react';
 
 const StudentDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
+  
   const [viewLevel, setViewLevel] = useState<string>(() => {
     try {
       return sessionStorage.getItem('activeLevel') || user?.level || '100L';
@@ -43,8 +43,6 @@ const StudentDashboard: React.FC = () => {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [quizInfo, setQuizInfo] = useState<{ courseTitle: string; materialText: string } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -156,13 +154,6 @@ const StudentDashboard: React.FC = () => {
             />
           </div>
           <button 
-            onClick={() => navigate('/research-assistant')}
-            className="flex items-center gap-2 bg-mouau-gold/20 text-mouau-gold px-3 py-1.5 rounded-lg border border-mouau-gold/30 hover:bg-mouau-gold/30 transition-all font-bold text-xs"
-          >
-            <Sparkles size={16} />
-            <span>MOUAU AI Assistant</span>
-          </button>
-          <button 
             onClick={handleLogout}
             className="flex items-center gap-2 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors"
           >
@@ -183,7 +174,6 @@ const StudentDashboard: React.FC = () => {
               <button className="bg-white px-5 py-3 rounded-[4px] border border-gray-100 shadow-sm flex items-center gap-3 cursor-pointer hover:border-mouau-green transition-all group-hover:shadow-md">
                 <Clock className="text-mouau-green" size={18} />
                 <span className="text-sm font-bold text-[#666666] uppercase tracking-wide">{viewLevel || '100L'} Section</span>
-                <ChevronDown size={14} className="text-gray-400 group-hover:rotate-180 transition-transform" />
               </button>
               
               <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 shadow-2xl rounded-[4px] py-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
@@ -211,7 +201,7 @@ const StudentDashboard: React.FC = () => {
         {/* Dynamic Learning Section */}
         <section>
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-serif font-bold text-[#1a1a1a]">Curated learning for {viewLevel || '100L'}</h2>
+            <h2 className="text-2xl font-serif font-bold text-[#1a1a1a]">Course Materials ({viewLevel || '100L'})</h2>
             <div className="flex items-center gap-2 text-mouau-green text-sm font-bold uppercase tracking-widest">
               <Layout size={16} />
               <span>{materials?.length || 0} Materials</span>
@@ -237,73 +227,22 @@ const StudentDashboard: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {filteredMaterials.map((material) => (
-                <div key={material.id} className="bg-white rounded-[4px] border border-gray-100 shadow-sm overflow-hidden hover:border-mouau-green transition-all">
-                  <button 
-                    onClick={() => setExpandedId(expandedId === material.id ? null : material.id)}
-                    className="w-full px-8 py-5 flex items-center justify-between group"
+                <div key={material.id} className="bg-white rounded-[4px] border border-gray-100 shadow-sm overflow-hidden flex flex-col sm:flex-row items-center justify-between p-6 hover:border-mouau-green transition-all gap-4">
+                  <div className="flex-1 w-full text-left">
+                     <div className="flex items-center gap-4 mb-2">
+                       <span className="font-bold text-mouau-green tracking-tight font-mono bg-mouau-green/5 px-3 py-1 rounded">{material.courseCode}</span>
+                       <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">{material.semester} Semester</span>
+                     </div>
+                     <h3 className="font-serif font-bold text-xl text-gray-900">{material.courseTitle}</h3>
+                     <p className="text-sm text-gray-500 mt-1">Uploaded by: {material.lecturerName}</p>
+                  </div>
+                  <button
+                     onClick={() => navigate(`/course/${material.id}`)}
+                     className="shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 bg-mouau-green text-white px-6 py-3 rounded-[4px] font-bold text-xs uppercase tracking-widest hover:bg-[#00522b] transition-all shadow-md"
                   >
-                    <div className="flex items-center gap-8 flex-1">
-                      <div className="w-20 font-bold text-mouau-green tracking-tight font-mono">{material.courseCode}</div>
-                      <div className="font-serif font-bold text-lg text-gray-900 flex-1 truncate text-left">{material.courseTitle}</div>
-                      <div className="text-sm text-gray-400 font-medium italic hidden md:block w-48 text-right underline decoration-mouau-green/20 underline-offset-4">Lecturer: {material.lecturerName}</div>
-                    </div>
-                    <div className={`p-2 rounded-full transition-colors ${expandedId === material.id ? 'bg-mouau-green text-white' : 'text-gray-300 group-hover:text-mouau-green'}`}>
-                      {expandedId === material.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                    </div>
+                     <ExternalLink size={16} />
+                     Read Document
                   </button>
-
-                  <AnimatePresence>
-                    {expandedId === material.id && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-8 pb-8 pt-2 grid grid-cols-1 md:grid-cols-2 gap-10 border-t border-gray-50 bg-gray-50/30">
-                          <div className="space-y-4">
-                            <h4 className="text-[11px] font-bold text-mouau-green uppercase tracking-[2.5px] flex items-center gap-2">
-                              <Star size={14} className="fill-mouau-green" />
-                              Key Academic Topics
-                            </h4>
-                            <ul className="space-y-3">
-                              {(Array.isArray(material.keyTopics) && material.keyTopics.length > 0 ? material.keyTopics : ['Detailed topics extraction in progress...', 'Contact coordinator for full syllabus', 'Core foundations and concepts']).map((topic: string, idx: number) => (
-                                <li key={idx} className="flex items-center gap-3 text-sm text-gray-700 font-medium">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-mouau-gold shrink-0" />
-                                  {topic}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                          
-                          <div className="flex flex-col h-full">
-                            <h4 className="text-[11px] font-bold text-[#999] uppercase tracking-[2.5px] mb-4">Brief Resource Overview</h4>
-                            <p className="text-gray-600 text-sm italic font-serif leading-relaxed flex-1">
-                              {material.overview || "This comprehensive academic resource provides a foundational look into the core principles of the course, curated specifically for MOUAU standards."}
-                            </p>
-                            
-                            <div className="flex items-center gap-4 mt-6">
-                              <button
-                                onClick={() => navigate(`/course/${material.id}`)}
-                                className="flex items-center justify-center gap-2 bg-mouau-green text-white px-6 py-3 rounded-[4px] font-bold text-xs uppercase tracking-widest hover:bg-[#00522b] transition-all shadow-lg shadow-mouau-green/20"
-                              >
-                                <ExternalLink size={14} />
-                                Read Now
-                              </button>
-                              
-                              <button
-                                onClick={() => setQuizInfo({ courseTitle: material.courseTitle, materialText: material.extractedText || '' })}
-                                className="flex items-center justify-center gap-2 bg-white border border-mouau-green text-mouau-green px-6 py-3 rounded-[4px] font-bold text-xs uppercase tracking-widest hover:bg-mouau-green/5 transition-all"
-                              >
-                                <HelpCircle size={14} />
-                                Take Practice Quiz
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               ))}
             </div>
@@ -347,17 +286,6 @@ const StudentDashboard: React.FC = () => {
           </div>
         </section>
       </main>
-
-      <AnimatePresence>
-        {quizInfo && (
-          <QuizModal 
-            isOpen={true} 
-            onClose={() => setQuizInfo(null)}
-            courseTitle={quizInfo.courseTitle}
-            materialText={quizInfo.materialText}
-          />
-        )}
-      </AnimatePresence>
     </div>
     </>
   );
