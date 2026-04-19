@@ -79,8 +79,8 @@ Return ONLY valid JSON.`
       }
     });
 
-    const textResponse = typeof response.text === 'function' ? response.text() : response.text;
-    const result = JSON.parse(textResponse || "{}");
+    const textResponse = response.text || "{}";
+    const result = JSON.parse(textResponse);
     return res.status(200).json(result);
 
   } catch (error: any) {

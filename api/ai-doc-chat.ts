@@ -75,7 +75,7 @@ INSTRUCTIONS:
       contents: { parts }
     });
 
-    const textResponse = typeof response.text === 'function' ? response.text() : response.text;
+    const textResponse = response.text || "";
     return res.status(200).json({ answer: textResponse });
 
   } catch (error: any) {
