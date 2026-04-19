@@ -46,7 +46,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string, role?: Role): Promise<User> => {
     try {
-      const res = await signInWithEmailAndPassword(auth, email, password);
+      const authEmail = email.toLowerCase().trim();
+      const res = await signInWithEmailAndPassword(auth, authEmail, password);
       const firebaseUser = res.user;
 
       const docRef = doc(db, 'users', firebaseUser.uid);
@@ -57,25 +58,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchedUser = docSnap.data() as User;
         setUser(fetchedUser);
       } else {
-        // Just in case auth exists but profile doesn't
+        // Just in case auth exists but profile doesn't (from incomplete registration sync)
         fetchedUser = {
           uid: firebaseUser.uid,
-          email,
+          email: authEmail,
           role: role || 'student',
-          name: email.split('@')[0],
+          name: authEmail.split('@')[0],
         };
         try {
           await setDoc(doc(db, 'users', firebaseUser.uid), fetchedUser);
         } catch (err) {
-          handleFirestoreError(err, OperationType.WRITE, `users/${firebaseUser.uid}`);
+          console.error("Set doc ignored on fallback login:", err);
         }
         setUser(fetchedUser);
       }
       return fetchedUser;
     } catch (error: any) {
-      if (error?.code === 'permission-denied') {
-        // Handled silently above
-      }
       console.error("Auth error:", error.code || error.message);
       throw error;
     }
@@ -83,23 +81,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (email: string, password: string, name: string, role: Role, level?: string) => {
     try {
-      const res = await createUserWithEmailAndPassword(auth, email, password);
+      const authEmail = email.toLowerCase().trim();
+      const res = await createUserWithEmailAndPassword(auth, authEmail, password);
       const firebaseUser = res.user;
 
-      const userData: User = {
+      const userData: any = {
         uid: firebaseUser.uid,
-        email,
+        email: authEmail,
         role,
         name,
-        level: level || (role === 'student' ? '100L' : undefined),
       };
+
+      if (role === 'student') {
+        userData.level = level || '100L';
+      }
 
       try {
         await setDoc(doc(db, 'users', firebaseUser.uid), userData);
       } catch (err) {
+        // Log explicitly to help track
+        console.error("SetDoc Registration rules failure:", err);
         handleFirestoreError(err, OperationType.WRITE, `users/${firebaseUser.uid}`);
       }
-      setUser(userData);
+      setUser(userData as User);
     } catch (error: any) {
       console.error("Register error:", error.code || error.message);
       throw error;

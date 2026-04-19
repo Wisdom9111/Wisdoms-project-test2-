@@ -18,7 +18,8 @@ const Login: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const user = await login(email, password);
+      const authEmail = email.toLowerCase().trim();
+      const user = await login(authEmail, password);
       // Determine navigation dynamically based on the fetched user role
       if (user.role === 'lecturer') {
         navigate('/lecturer-dashboard');
@@ -27,11 +28,10 @@ const Login: React.FC = () => {
       }
     } catch (err: any) {
       const errorMsg = err.message || err.code;
-      alert(`Sign-In Failed: ${errorMsg}`); // Mobile/Vercel debugging requirement
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError("Invalid email or password. Please try again.");
       } else {
-        setError(`An error occurred during login: ${errorMsg}`);
+        setError(errorMsg);
       }
     } finally {
       setLoading(false);
