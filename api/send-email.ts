@@ -5,7 +5,7 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!process.env.MOUAU_PORTAL_KEY) {
+  if (!process.env.MOUAU_PORTAL_KEY && !process.env.mouau_portal_key) {
     return res.status(500).json({ error: 'MOUAU_PORTAL_KEY is missing in Vercel Environment Variables.' });
   }
 
@@ -20,7 +20,7 @@ export default async function handler(req: any, res: any) {
       service: 'gmail',
       auth: {
         user: 'mouau.portal.verify@gmail.com',
-        pass: process.env.MOUAU_PORTAL_KEY,
+        pass: process.env.MOUAU_PORTAL_KEY || process.env.mouau_portal_key,
       },
     });
 
