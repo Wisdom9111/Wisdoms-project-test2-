@@ -115,15 +115,27 @@ const Register: React.FC = () => {
     
     try {
       await register(email, password, name, role, role === 'student' ? level : undefined);
-      // Let App.tsx handle the automatic routing once useAuth() updates.
+      
+      // Forcefully transition the user
+      setShowVerificationModal(false);
+      
+      // Immediate manual redirect just to ensure they never stay stuck
+      if (role === 'lecturer') {
+        navigate('/lecturer-dashboard', { replace: true });
+      } else {
+        navigate('/student-dashboard', { replace: true });
+      }
+      
     } catch (err: any) {
       setShowVerificationModal(false); // Drop modal to show error
       if (err.code === 'auth/email-already-in-use') {
         setError("This email is already registered. Try logging in.");
+      } else if (err.code === 'auth/wrong-password') {
+        setError("You registered previously with a different password. Please hit Sign In and use your original password.");
       } else if (err.code === 'auth/weak-password') {
         setError("Password is too weak. Use at least 6 characters.");
       } else {
-        setError("Registration failed. Please try again later.");
+        setError(`Registration failed: ${err.message || err.code}`);
       }
       setLoading(false);
     }
