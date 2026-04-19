@@ -6,6 +6,7 @@ export interface User {
   role: Role;
   name: string;
   level?: string; // e.g., '300L'
+  is_verified?: boolean;
 }
 
 export interface Material {

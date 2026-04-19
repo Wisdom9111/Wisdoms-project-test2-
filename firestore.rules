@@ -60,10 +60,12 @@ service cloud.firestore {
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'email', 'name', 'role']) &&
              data.uid == request.auth.uid &&
-             data.email == request.auth.token.email &&
+             // Using lower() just in case the OAuth/Email token casing varies during normalization
+             data.email.lower() == request.auth.token.email.lower() &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.role in ['student', 'lecturer'] &&
-             (!('level' in data) || data.level in ['100L', '200L', '300L', '400L']);
+             (!('level' in data) || data.level in ['100L', '200L', '300L', '400L']) &&
+             (!('is_verified' in data) || data.is_verified is bool);
     }
 
     function isValidMaterial(data) {

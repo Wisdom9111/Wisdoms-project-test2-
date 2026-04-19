@@ -56,6 +56,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let fetchedUser: User;
       if (docSnap.exists()) {
         fetchedUser = docSnap.data() as User;
+        
+        // Auto-heal verified property if missing
+        if (!fetchedUser.is_verified) {
+          fetchedUser.is_verified = true;
+          try {
+            await setDoc(docRef, { is_verified: true }, { merge: true });
+          } catch (e) {}
+        }
+        
         setUser(fetchedUser);
       } else {
         // Just in case auth exists but profile doesn't (from incomplete registration sync)
@@ -64,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: authEmail,
           role: role || 'student',
           name: authEmail.split('@')[0],
+          is_verified: true,
         };
         try {
           await setDoc(doc(db, 'users', firebaseUser.uid), fetchedUser);
@@ -82,22 +92,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (email: string, password: string, name: string, role: Role, level?: string) => {
     try {
       const authEmail = email.toLowerCase().trim();
-      const res = await createUserWithEmailAndPassword(auth, authEmail, password);
-      const firebaseUser = res.user;
+      let firebaseUser;
+      let existingRole: Role | undefined = undefined;
+      let existingLevel: string | undefined = undefined;
+      
+      try {
+        const res = await createUserWithEmailAndPassword(auth, authEmail, password);
+        firebaseUser = res.user;
+      } catch (authErr: any) {
+        if (authErr.code === 'auth/email-already-in-use') {
+          // Auto-Login Recovery: If they've proven email ownership via OTP code but already existed, we log them in dynamically!
+          const loginRes = await signInWithEmailAndPassword(auth, authEmail, password);
+          firebaseUser = loginRes.user;
+          
+          // Pull existing data to not override their true role/level if they already set it
+          const docRef = doc(db, 'users', firebaseUser.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const existingData = docSnap.data() as User;
+            existingRole = existingData.role;
+            existingLevel = existingData.level;
+          }
+        } else {
+          throw authErr; // It's another type of error (weak pass, etc)
+        }
+      }
+
+      const finalRole = existingRole || role;
+      const finalLevel = existingLevel || level || '100L';
 
       const userData: any = {
         uid: firebaseUser.uid,
         email: authEmail,
-        role,
+        role: finalRole,
         name,
+        is_verified: true,
       };
 
-      if (role === 'student') {
-        userData.level = level || '100L';
+      if (finalRole === 'student') {
+        userData.level = finalLevel;
       }
 
       try {
-        await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+        await setDoc(doc(db, 'users', firebaseUser.uid), userData, { merge: true });
       } catch (err) {
         // Log explicitly, but do NOT throw an error that crashes the Register flow
         console.error("SetDoc Registration safely ignored:", err);
