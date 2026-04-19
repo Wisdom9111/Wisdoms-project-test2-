@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, User, ShieldCheck, X, Loader2, Send } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PasswordInput from '../../components/PasswordInput';
 import { Role } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { fetchSignInMethodsForEmail } from 'firebase/auth';
+import { auth } from '../../lib/firebase';
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -16,6 +18,39 @@ const Register: React.FC = () => {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Email Existence Checking
+  const [emailExists, setEmailExists] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+
+  useEffect(() => {
+    if (!email || !email.includes('@')) {
+      setEmailExists(false);
+      return;
+    }
+    
+    let isMounted = true;
+    const checkEmail = async () => {
+      setCheckingEmail(true);
+      try {
+        const methods = await fetchSignInMethodsForEmail(auth, email);
+        if (isMounted) {
+          setEmailExists(methods.length > 0);
+        }
+      } catch (err: any) {
+        console.error("Error checking email", err);
+        if (isMounted) setEmailExists(false);
+      } finally {
+        if (isMounted) setCheckingEmail(false);
+      }
+    };
+
+    const timeoutId = setTimeout(checkEmail, 600);
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [email]);
 
   // Verification UI State
   const [showVerificationModal, setShowVerificationModal] = useState(false);
@@ -53,6 +88,9 @@ const Register: React.FC = () => {
 
   const handleInitialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (emailExists) {
+      return; // Do nothing if email exists
+    }
     if (password.length < 6) {
       setError("Password is too weak. Use at least 6 characters.");
       return;
@@ -77,11 +115,14 @@ const Register: React.FC = () => {
     
     try {
       await register(email, password, name, role, role === 'student' ? level : undefined);
-      if (role === 'lecturer') {
-        navigate('/lecturer-dashboard');
-      } else {
-        navigate('/student-dashboard');
-      }
+      // Wait a moment for auth state to fully establish before forwarding
+      setTimeout(() => {
+        if (role === 'lecturer') {
+          navigate('/lecturer-dashboard');
+        } else {
+          navigate('/student-dashboard');
+        }
+      }, 500);
     } catch (err: any) {
       setShowVerificationModal(false); // Drop modal to show error
       if (err.code === 'auth/email-already-in-use') {
@@ -91,7 +132,6 @@ const Register: React.FC = () => {
       } else {
         setError("Registration failed. Please try again later.");
       }
-    } finally {
       setLoading(false);
     }
   };
@@ -166,16 +206,26 @@ const Register: React.FC = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[12px] font-bold text-[#666666] uppercase tracking-wider block">University Email</label>
+            <div className="space-y-2 relative">
+              <div className="flex items-center justify-between">
+                <label className="text-[12px] font-bold text-[#666666] uppercase tracking-wider block">University Email</label>
+                {checkingEmail && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
+              </div>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@mouau.edu.ng"
-                className="w-full px-4 py-3.5 border-[1.5px] border-[#e0e0e0] rounded-[4px] text-[16px] outline-none focus:border-mouau-green"
+                className={`w-full px-4 py-3.5 border-[1.5px] rounded-[4px] text-[16px] outline-none transition-colors ${
+                  emailExists ? 'border-red-300 focus:border-red-500 bg-red-50' : 'border-[#e0e0e0] focus:border-mouau-green'
+                }`}
               />
+              {emailExists && (
+                <p className="text-red-500 text-sm font-medium mt-1">
+                  This email is already registered. Try logging in.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -219,8 +269,12 @@ const Register: React.FC = () => {
 
             <button
               type="submit"
-              disabled={loading}
-              className={`w-full bg-mouau-green text-white py-4 rounded-[4px] font-semibold text-[16px] hover:bg-[#00522b] transition-all shadow-lg shadow-mouau-green/20 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={loading || emailExists || checkingEmail}
+              className={`w-full bg-mouau-green text-white py-4 rounded-[4px] font-semibold text-[16px] transition-all shadow-lg shadow-mouau-green/20 
+                ${(loading || emailExists || checkingEmail) 
+                  ? 'opacity-40 cursor-not-allowed bg-gray-500 hover:bg-gray-500 shadow-none' 
+                  : 'hover:bg-[#00522b]'
+                }`}
             >
               Request Verification Code
             </button>
