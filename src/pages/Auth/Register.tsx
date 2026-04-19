@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, User, ShieldCheck } from 'lucide-react';
+import { Mail, User, ShieldCheck, X, Loader2, Send } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PasswordInput from '../../components/PasswordInput';
 import { Role } from '../../types';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -17,10 +17,64 @@ const Register: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Verification UI State
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState('');
+  const [userEnteredCode, setUserEnteredCode] = useState('');
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+
+  const generateAndSendCode = async (userEmail: string) => {
+    setIsSendingCode(true);
+    setVerificationError(null);
+    try {
+      const code = "MOUAU_CMP_" + Math.floor(100000 + Math.random() * 900000);
+      setGeneratedCode(code);
+      
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail, code })
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to send verification email. Ensure RESEND_API_KEY is active.');
+      }
+      
+      return true;
+    } catch (err: any) {
+      setError(err.message || "Failed to trigger code generation.");
+      setShowVerificationModal(false);
+      return false;
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  const handleInitialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (password.length < 6) {
+      setError("Password is too weak. Use at least 6 characters.");
+      return;
+    }
     setError(null);
+    setShowVerificationModal(true);
+    await generateAndSendCode(email);
+  };
+
+  const handleVerifyAndRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Strict Verification checking
+    if (userEnteredCode !== generatedCode) {
+      setVerificationError("The code is incorrect. Please check your email and try again.");
+      return;
+    }
+
+    // Pass verification
+    setVerificationError(null);
+    setLoading(true);
+    
     try {
       await register(email, password, name, role, role === 'student' ? level : undefined);
       if (role === 'lecturer') {
@@ -29,6 +83,7 @@ const Register: React.FC = () => {
         navigate('/student-dashboard');
       }
     } catch (err: any) {
+      setShowVerificationModal(false); // Drop modal to show error
       if (err.code === 'auth/email-already-in-use') {
         setError("This email is already registered. Try logging in.");
       } else if (err.code === 'auth/weak-password') {
@@ -93,7 +148,7 @@ const Register: React.FC = () => {
             <p className="text-[#666666] text-[16px]">Join the Courseware Management System</p>
           </header>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleInitialSubmit} className="space-y-6">
             {error && (
               <div className="bg-red-50 text-red-600 p-3 rounded text-sm font-bold border border-red-100 italic">
                 {error}
@@ -167,7 +222,7 @@ const Register: React.FC = () => {
               disabled={loading}
               className={`w-full bg-mouau-green text-white py-4 rounded-[4px] font-semibold text-[16px] hover:bg-[#00522b] transition-all shadow-lg shadow-mouau-green/20 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {loading ? 'Registering...' : 'Register for Portal'}
+              Request Verification Code
             </button>
           </form>
 
@@ -177,14 +232,95 @@ const Register: React.FC = () => {
               Sign In
             </Link>
           </div>
-
-          <div className="absolute bottom-5 right-5 font-mono text-[10px] text-[#ccc] bg-[#f5f5f5] px-2 py-1 border border-[#eee] rounded">
-            Build: v1.0.4 | Chunks: 12 | Suspense: Active
-          </div>
         </motion.div>
       </div>
+
+      {/* Verification Modal Popup */}
+      <AnimatePresence>
+        {showVerificationModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-mouau-green to-[#00522b] px-6 py-4 flex items-center justify-between text-white">
+                <h2 className="font-bold text-lg flex items-center gap-2">
+                  <ShieldCheck size={20} />
+                  Email Verification
+                </h2>
+                <button
+                  onClick={() => setShowVerificationModal(false)}
+                  className="p-1 hover:bg-white/20 rounded-full transition"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 bg-mouau-green/10 text-mouau-green rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Mail size={32} />
+                  </div>
+                  <p className="text-gray-800 font-medium text-lg mb-1">
+                    Check your inbox or spam for the code
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    We sent a strict 6-digit verification code to <strong>{email}</strong>
+                  </p>
+                </div>
+
+                <form onSubmit={handleVerifyAndRegister} className="space-y-4">
+                  {verificationError && (
+                    <div className="bg-red-50 text-red-600 text-sm font-bold p-3 rounded text-center border border-red-100">
+                      {verificationError}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label className="text-[12px] font-bold text-gray-600 uppercase tracking-widest text-center block">
+                      Enter MOUAU_CMP_ Code
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={userEnteredCode}
+                      onChange={(e) => setUserEnteredCode(e.target.value.toUpperCase())}
+                      placeholder="MOUAU_CMP_123456"
+                      className="w-full px-4 py-3 bg-gray-50 border-[1.5px] border-gray-200 rounded-lg text-center text-lg font-mono tracking-widest outline-none focus:border-mouau-green focus:bg-white transition-all"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading || isSendingCode}
+                    className="w-full bg-mouau-green text-white py-3.5 rounded-lg font-bold hover:bg-[#00522b] disabled:opacity-50 transition-all flex justify-center items-center gap-2"
+                  >
+                    {loading ? <Loader2 className="animate-spin" size={20} /> : 'Verify & Complete Registration'}
+                  </button>
+                </form>
+
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => generateAndSendCode(email)}
+                    disabled={isSendingCode}
+                    className="text-sm text-gray-500 hover:text-mouau-green transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mx-auto"
+                  >
+                    {isSendingCode ? <Loader2 className="animate-spin shrink-0" size={14} /> : <Send size={14} />}
+                    <span className="font-medium underline decoration-dashed underline-offset-4">
+                      {isSendingCode ? 'Sending...' : "Didn't receive code? Resend"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 export default Register;
+

@@ -8,12 +8,16 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import multer from 'multer';
 import cors from 'cors';
 import { GoogleGenAI, Type } from "@google/genai";
+import { Resend } from 'resend';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize AI SDK
 const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+
+// Initialize Resend
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 async function startServer() {
   console.log('Initializing MOUAU CMS Server...');
@@ -24,6 +28,45 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+
+  // API Route for Sending Email (Resend)
+  app.post('/api/send-email', async (req, res) => {
+    if (!resend) {
+      return res.status(500).json({ error: 'RESEND_API_KEY is missing on the server.' });
+    }
+
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email and verification code are required' });
+    }
+
+    try {
+      const data = await resend.emails.send({
+        from: 'MOUAU Portal <onboarding@resend.dev>',
+        to: email,
+        subject: 'Your MOUAU Portal Verification Code',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; max-w: 600px; margin: 0 auto;">
+            <h2 style="color: #006837;">MOUAU Courseware Portal Verification</h2>
+            <p style="color: #444; font-size: 16px;">You recently requested to register for the MOUAU Courseware Management System.</p>
+            <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 30px 0; border: 1px solid #e2e8f0;">
+              <p style="margin: 0; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Your Verification Code</p>
+              <p style="margin: 10px 0 0; font-size: 32px; font-family: monospace; font-weight: bold; color: #1a1a1a;">${code}</p>
+            </div>
+            <p style="color: #444; font-size: 14px;">Please enter this exact code in the portal to complete your registration securely.</p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
+            <p style="font-size: 12px; color: #888;">If you did not request this verification, please ignore this email.</p>
+          </div>
+        `,
+      });
+
+      return res.status(200).json({ success: true, data });
+    } catch (error: any) {
+      console.error('Email sending error:', error);
+      return res.status(500).json({ error: error.message || 'Error sending email' });
+    }
+  });
 
   // API Route for Vercel Blob Signature (Secure handleUpload flow)
   app.post('/api/upload', async (req, res) => {
