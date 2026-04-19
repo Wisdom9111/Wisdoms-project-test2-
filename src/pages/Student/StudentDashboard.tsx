@@ -133,7 +133,7 @@ const StudentDashboard: React.FC = () => {
 
     try {
       // Build a string representing the available library to pass to the AI
-      const libraryContext = materials.map(m => `- ${m.courseCode}: ${m.courseTitle} (Uploaded by ${m.lecturerName})`).join('\n');
+      const libraryContext = materials.map(m => `- ${m.courseCode}: ${m.courseTitle} (Uploaded by ${m.lecturerName})\n  Topics: ${(m.keyTopics || []).join(', ')}\n  Overview: ${m.overview || 'Not yet analyzed'}`).join('\n\n');
 
       const res = await fetch('/api/ai-chat', {
         method: 'POST',

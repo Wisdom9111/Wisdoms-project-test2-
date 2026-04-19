@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Shield, AlertTriangle, Lock, Sparkles, Loader2, List, BookOpen, MessageSquare, Send } from 'lucide-react';
-import { db } from '../../lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { doc, getDoc, updateDoc, collection, query, onSnapshot } from 'firebase/firestore';
 import { Material } from '../../types';
 import { Worker, Viewer } from '@react-pdf-viewer/core';
 import '@react-pdf-viewer/core/lib/styles/index.css';
@@ -13,6 +13,7 @@ const SecureViewer: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [material, setMaterial] = useState<Material | null>(null);
+  const [allMaterials, setAllMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -44,7 +45,9 @@ const SecureViewer: React.FC = () => {
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
     document.addEventListener('contextmenu', handleContextMenu);
 
-    const fetchMaterial = async () => {
+    let unsubscribe = () => {};
+
+    const fetchMaterialAndLibrary = async () => {
       if (!id) return;
       try {
         const docRef = doc(db, 'materials', id);
@@ -66,6 +69,16 @@ const SecureViewer: React.FC = () => {
         } else {
           setError('Material not found.');
         }
+
+        // Fetch the full library context
+        const materialsRef = collection(db, 'materials');
+        unsubscribe = onSnapshot(query(materialsRef), (snapshot) => {
+          const allData = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Material[];
+          setAllMaterials(allData);
+        }, (err) => {
+          console.error("Failed to load library context", err);
+        });
+
       } catch (err) {
         console.error(err);
         setError('Failed to load courseware.');
@@ -74,10 +87,11 @@ const SecureViewer: React.FC = () => {
       }
     };
 
-    fetchMaterial();
+    fetchMaterialAndLibrary();
 
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
+      unsubscribe();
     };
   }, [id]);
 
@@ -145,6 +159,8 @@ const SecureViewer: React.FC = () => {
     }, 100);
 
     try {
+      const libraryContext = allMaterials.map(m => `- ${m.courseCode}: ${m.courseTitle} (Uploaded by ${m.lecturerName})\n  Topics: ${(m.keyTopics || []).join(', ')}\n  Overview: ${m.overview || 'Not yet analyzed'}`).join('\n\n');
+
       const res = await fetch('/api/ai-doc-chat', {
         method: 'POST',
         headers: {
@@ -155,7 +171,8 @@ const SecureViewer: React.FC = () => {
           courseCode: material.courseCode,
           courseTitle: material.courseTitle,
           query: question,
-          history: docChatMessages
+          history: docChatMessages,
+          libraryContext
         }),
       });
 
