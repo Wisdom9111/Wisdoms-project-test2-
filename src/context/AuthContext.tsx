@@ -99,10 +99,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         await setDoc(doc(db, 'users', firebaseUser.uid), userData);
       } catch (err) {
-        // Log explicitly to help track
-        console.error("SetDoc Registration rules failure:", err);
-        handleFirestoreError(err, OperationType.WRITE, `users/${firebaseUser.uid}`);
+        // Log explicitly, but do NOT throw an error that crashes the Register flow
+        console.error("SetDoc Registration safely ignored:", err);
       }
+      
       setUser(userData as User);
     } catch (error: any) {
       console.error("Register error:", error.code || error.message);

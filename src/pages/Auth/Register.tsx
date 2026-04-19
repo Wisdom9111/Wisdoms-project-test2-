@@ -115,14 +115,7 @@ const Register: React.FC = () => {
     
     try {
       await register(email, password, name, role, role === 'student' ? level : undefined);
-      // Wait a moment for auth state to fully establish before forwarding
-      setTimeout(() => {
-        if (role === 'lecturer') {
-          navigate('/lecturer-dashboard');
-        } else {
-          navigate('/student-dashboard');
-        }
-      }, 500);
+      // Let App.tsx handle the automatic routing once useAuth() updates.
     } catch (err: any) {
       setShowVerificationModal(false); // Drop modal to show error
       if (err.code === 'auth/email-already-in-use') {
