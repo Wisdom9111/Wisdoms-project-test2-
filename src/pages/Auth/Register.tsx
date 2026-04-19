@@ -130,8 +130,8 @@ const Register: React.FC = () => {
       setShowVerificationModal(false); // Drop modal to show error
       if (err.code === 'auth/email-already-in-use') {
         setError("This email is already registered. Try logging in.");
-      } else if (err.code === 'auth/wrong-password') {
-        setError("You registered previously with a different password. Please hit Sign In and use your original password.");
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError("You already have an account! Firebase blocked this because the password you just typed doesn't match your original one. Please click 'Sign In' below.");
       } else if (err.code === 'auth/weak-password') {
         setError("Password is too weak. Use at least 6 characters.");
       } else {
