@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, ShieldCheck } from 'lucide-react';
+import { Mail, ShieldCheck, KeyRound, Loader2, X, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PasswordInput from '../../components/PasswordInput';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../../lib/firebase';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -12,6 +14,12 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Forgot Password feature state
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotStatus, setForgotStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [forgotErrorMsg, setForgotErrorMsg] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +43,24 @@ const Login: React.FC = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    setForgotStatus('loading');
+    setForgotErrorMsg('');
+    try {
+      await sendPasswordResetEmail(auth, forgotEmail.toLowerCase().trim());
+      setForgotStatus('success');
+    } catch (err: any) {
+      setForgotStatus('error');
+      if (err.code === 'auth/user-not-found') {
+        setForgotErrorMsg("No account found with this email.");
+      } else {
+        setForgotErrorMsg(err.message || "Failed to send reset email.");
+      }
     }
   };
 
@@ -86,7 +112,6 @@ const Login: React.FC = () => {
           </div>
         </div>
 
-        {/* Decorative background element */}
         <div className="absolute bottom-0 right-0 w-[200px] h-[200px] bg-gradient-to-br from-transparent via-transparent to-white/5 pointer-events-none" />
       </div>
 
@@ -120,13 +145,28 @@ const Login: React.FC = () => {
               />
             </div>
 
-            <PasswordInput
-              label="Password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-            />
+            <div className="space-y-1">
+              <PasswordInput
+                label="Password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+              />
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotEmail(email); // Pre-fill if they already typed it
+                    setForgotStatus('idle');
+                    setShowForgotModal(true);
+                  }}
+                  className="text-[13px] text-mouau-green font-semibold hover:underline mt-1"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+            </div>
 
             <button
               type="submit"
@@ -149,6 +189,101 @@ const Login: React.FC = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <AnimatePresence>
+        {showForgotModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-mouau-green to-[#00522b] px-6 py-4 flex items-center justify-between text-white">
+                <h2 className="font-bold text-lg flex items-center gap-2">
+                  <KeyRound size={20} />
+                  Reset Password
+                </h2>
+                <button
+                  onClick={() => setShowForgotModal(false)}
+                  className="p-1 hover:bg-white/20 rounded-full transition"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6">
+                {forgotStatus === 'success' ? (
+                  <div className="text-center py-4">
+                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle size={32} />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">Check Your Inbox</h3>
+                    <p className="text-gray-600">
+                      We've sent a secure password reset link to <strong>{forgotEmail}</strong>. Click the link in the email to set your new password.
+                    </p>
+                    <button
+                      onClick={() => setShowForgotModal(false)}
+                      className="mt-6 w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200 transition-colors"
+                    >
+                      Back to Sign In
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-center mb-6">
+                      <div className="w-12 h-12 bg-mouau-green/10 text-mouau-green rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Mail size={24} />
+                      </div>
+                      <p className="text-gray-600 text-sm">
+                        Enter your university email address and we'll send you a secure link to reset your password.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleForgotPassword} className="space-y-4">
+                      {forgotStatus === 'error' && (
+                        <div className="bg-red-50 text-red-600 text-sm font-bold p-3 rounded border border-red-100 text-center">
+                          {forgotErrorMsg}
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <label className="text-[12px] font-bold text-gray-600 uppercase tracking-widest block">
+                          Registered Email
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          placeholder="name@mouau.edu.ng"
+                          className="w-full px-4 py-3 bg-gray-50 border-[1.5px] border-gray-200 rounded-lg outline-none focus:border-mouau-green focus:bg-white transition-all text-[15px]"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={forgotStatus === 'loading'}
+                        className="w-full bg-mouau-green text-white py-3.5 rounded-lg font-bold hover:bg-[#00522b] disabled:opacity-50 transition-all flex justify-center items-center gap-2"
+                      >
+                        {forgotStatus === 'loading' ? (
+                          <>
+                            <Loader2 className="animate-spin" size={18} />
+                            Sending...
+                          </>
+                        ) : (
+                          'Send Reset Link'
+                        )}
+                      </button>
+                    </form>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
