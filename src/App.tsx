@@ -6,12 +6,16 @@ import { ShieldCheck } from 'lucide-react';
 // Lazy loading all routes for performance (Micro-Modularization)
 const Login = lazy(() => import('./pages/Auth/Login'));
 const Register = lazy(() => import('./pages/Auth/Register'));
+
 const LecturerDashboard = lazy(() => import('./pages/Lecturer/LecturerDashboard'));
 const UploadMaterial = lazy(() => import('./pages/Lecturer/UploadMaterial'));
+
 const StudentDashboard = lazy(() => import('./pages/Student/StudentDashboard'));
 const SecureViewer = lazy(() => import('./pages/Student/SecureViewer'));
 const Quiz = lazy(() => import('./pages/Student/Quiz'));
 const ResearchAssistant = lazy(() => import('./pages/Student/ResearchAssistant'));
+
+const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
 
 // Loading component (Global Loader)
 const LoadingScreen = () => (
@@ -25,12 +29,13 @@ const LoadingScreen = () => (
 );
 
 // Protected Route Wrapper
-const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, allowedRole?: 'student' | 'lecturer' }) => {
+const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, allowedRole?: 'student' | 'lecturer' | 'admin' }) => {
   const { user, loading } = useAuth();
   
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
   if (allowedRole && user.role !== allowedRole) {
+    if (user.role === 'admin') return <Navigate to="/admin-dashboard" replace />;
     return <Navigate to={user.role === 'lecturer' ? '/lecturer-dashboard' : '/student-dashboard'} replace />;
   }
   
@@ -43,6 +48,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (loading) return <LoadingScreen />;
   if (user) {
+    if (user.role === 'admin') return <Navigate to="/admin-dashboard" replace />;
     return <Navigate to={user.role === 'lecturer' ? '/lecturer-dashboard' : '/student-dashboard'} replace />;
   }
   
@@ -57,6 +63,13 @@ const AppContent = () => {
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
         
+        {/* Admin Routes */}
+        <Route path="/admin-dashboard/*" element={
+          <ProtectedRoute allowedRole="admin">
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+
         {/* Lecturer Routes */}
         <Route path="/lecturer-dashboard" element={
           <ProtectedRoute allowedRole="lecturer">

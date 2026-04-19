@@ -134,6 +134,8 @@ const Register: React.FC = () => {
         setError("You already have an account! Firebase blocked this because the password you just typed doesn't match your original one. Please click 'Sign In' below.");
       } else if (err.code === 'auth/weak-password') {
         setError("Password is too weak. Use at least 6 characters.");
+      } else if (err.code === 'auth/network-request-failed') {
+        setError("Network error: Firebase Auth blocked. Please check your internet connection, or turn off your VPN/Adblocker.");
       } else {
         setError(`Registration failed: ${err.message || err.code}`);
       }

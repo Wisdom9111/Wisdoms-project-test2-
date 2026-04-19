@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-mouau-green: #006837;
   --color-mouau-gold: #c5a059;
@@ -10,6 +12,6 @@
 
 @layer base {
   body {
-    @apply font-sans bg-white text-[#1a1a1a];
+    @apply font-sans bg-white text-[#1a1a1a] transition-colors duration-200 dark:bg-gray-900 dark:text-gray-100;
   }
 }

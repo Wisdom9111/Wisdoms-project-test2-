@@ -29,7 +29,9 @@ const Login: React.FC = () => {
       const authEmail = email.toLowerCase().trim();
       const user = await login(authEmail, password);
       // Determine navigation dynamically based on the fetched user role
-      if (user.role === 'lecturer') {
+      if (user.role === 'admin') {
+        navigate('/admin-dashboard');
+      } else if (user.role === 'lecturer') {
         navigate('/lecturer-dashboard');
       } else {
         navigate('/student-dashboard');
@@ -38,6 +40,8 @@ const Login: React.FC = () => {
       const errorMsg = err.message || err.code;
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError("Invalid email or password. Please try again.");
+      } else if (err.code === 'auth/network-request-failed') {
+        setError("Network error: Firebase Auth blocked. Please check your internet connection, or turn off your VPN/Adblocker.");
       } else {
         setError(errorMsg);
       }

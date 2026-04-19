@@ -1,4 +1,4 @@
-export type Role = 'student' | 'lecturer' | null;
+export type Role = 'student' | 'lecturer' | 'admin' | null;
 
 export interface User {
   uid: string;
@@ -7,6 +7,10 @@ export interface User {
   name: string;
   level?: string; // e.g., '300L'
   is_verified?: boolean;
+  is_approved?: boolean; // Lecturers require this
+  is_suspended?: boolean; // For blocked accounts
+  last_active?: any; // To track online status
+  created_at?: any; // To see session they registered on
 }
 
 export interface Material {

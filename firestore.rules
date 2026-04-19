@@ -38,6 +38,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isMasterAdmin() {
+      return isAuthenticated() && request.auth.token.email.lower() == 'wisdomezekiel28@gmail.com';
+    }
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
@@ -58,18 +62,25 @@ service cloud.firestore {
     // Domain Validators
     
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email', 'name', 'role']) &&
+      // Normal users must abide by strict schema, Master Admins bypass.
+      return isMasterAdmin() || (
+             data.keys().hasAll(['uid', 'email', 'name', 'role']) &&
              data.uid == request.auth.uid &&
-             // Using lower() just in case the OAuth/Email token casing varies during normalization
              data.email.lower() == request.auth.token.email.lower() &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.role in ['student', 'lecturer'] &&
+             data.role in ['student', 'lecturer', 'admin'] &&
              (!('level' in data) || data.level in ['100L', '200L', '300L', '400L']) &&
-             (!('is_verified' in data) || data.is_verified is bool);
+             (!('is_verified' in data) || data.is_verified is bool) &&
+             (!('is_approved' in data) || data.is_approved is bool) &&
+             (!('is_suspended' in data) || data.is_suspended is bool) &&
+             (!('last_active' in data) || true) &&
+             (!('created_at' in data) || true)
+      );
     }
 
     function isValidMaterial(data) {
-      return data.keys().hasAll(['courseCode', 'courseTitle', 'lecturerName', 'lecturerUid', 'fileUrl', 'level', 'semester', 'createdAt']) &&
+      return isMasterAdmin() || (
+             data.keys().hasAll(['courseCode', 'courseTitle', 'lecturerName', 'lecturerUid', 'fileUrl', 'level', 'semester', 'createdAt']) &&
              data.courseCode is string && data.courseCode.size() > 0 && data.courseCode.size() < 20 &&
              data.courseTitle is string && data.courseTitle.size() > 0 && data.courseTitle.size() < 200 &&
              data.lecturerName is string && data.lecturerName.size() > 0 &&
@@ -80,16 +91,19 @@ service cloud.firestore {
              data.createdAt is timestamp &&
              (!('extractedText' in data) || data.extractedText is string) &&
              (!('overview' in data) || data.overview is string) &&
-             (!('keyTopics' in data) || data.keyTopics is list);
+             (!('keyTopics' in data) || data.keyTopics is list)
+      );
     }
 
     function isValidNotice(data) {
-      return data.keys().hasAll(['content', 'targetLevel', 'lecturerName', 'lecturerUid', 'createdAt']) &&
+      return isMasterAdmin() || (
+             data.keys().hasAll(['content', 'targetLevel', 'lecturerName', 'lecturerUid', 'createdAt']) &&
              data.content is string && data.content.size() > 0 && data.content.size() < 5000 &&
              data.targetLevel in ['100L', '200L', '300L', '400L'] &&
              data.lecturerName is string &&
              data.lecturerUid == request.auth.uid &&
-             data.createdAt is timestamp;
+             data.createdAt is timestamp
+      );
     }
 
     // ===============================================================
@@ -98,22 +112,24 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create, update: if isOwner(userId) && isValidUser(request.resource.data);
+      allow create, update: if isMasterAdmin() || (isOwner(userId) && isValidUser(request.resource.data));
+      allow delete: if isMasterAdmin();
     }
 
     match /materials/{materialId} {
       allow read: if isAuthenticated();
-      allow create: if isLecturer() && isValidMaterial(request.resource.data);
-      allow update: if isLecturer() && 
+      allow create: if isMasterAdmin() || (isLecturer() && isValidMaterial(request.resource.data));
+      allow update: if isMasterAdmin() || (isLecturer() && 
                       request.resource.data.lecturerUid == resource.data.lecturerUid && 
-                      isValidMaterial(request.resource.data);
-      allow delete: if isLecturer() && resource.data.lecturerUid == request.auth.uid;
+                      isValidMaterial(request.resource.data));
+      allow delete: if isMasterAdmin() || (isLecturer() && resource.data.lecturerUid == request.auth.uid);
     }
 
     match /notices/{noticeId} {
       allow read: if isAuthenticated();
-      allow create: if isLecturer() && isValidNotice(request.resource.data);
-      allow delete: if isLecturer() && resource.data.lecturerUid == request.auth.uid;
+      allow create: if isMasterAdmin() || (isLecturer() && isValidNotice(request.resource.data));
+      allow delete: if isMasterAdmin() || (isLecturer() && resource.data.lecturerUid == request.auth.uid);
+      allow update: if isMasterAdmin() || (isLecturer() && resource.data.lecturerUid == request.auth.uid);
     }
   }
 }
