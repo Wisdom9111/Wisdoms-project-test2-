@@ -25,9 +25,19 @@ const SecureViewer: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Document Page state
   const [initialPage, setInitialPage] = useState(0);
+
+  // Auto-resize chat textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'inherit'; // Reset
+      const scrollHeight = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = Math.min(scrollHeight, 150) + "px";
+    }
+  }, [chatInput]);
 
   useEffect(() => {
     // Disable right-click for security
@@ -348,19 +358,49 @@ const SecureViewer: React.FC = () => {
                           ))}
                         </div>
                       </div>
+
+                      {/* Chat Input Field (Moved directly below the info to immediately allow typing before chat history) */}
+                      <div className="shrink-0 bg-transparent pt-4 w-full">
+                        <form onSubmit={sendDocQuestion} className="w-full">
+                          <div className="flex items-center gap-2 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-gray-200 rounded-[16px] focus-within:border-purple-400 focus-within:shadow-[0_0_15px_rgba(168,85,247,0.15)] transition-all duration-300 pl-4 pr-1.5 py-1.5 w-full">
+                            <div className="flex-1 flex items-center h-full">
+                              <textarea
+                                ref={textareaRef}
+                                rows={1}
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    sendDocQuestion();
+                                  }
+                                }}
+                                placeholder="Ask me anything you don't understand"
+                                className="w-full bg-transparent border-none outline-none focus:ring-0 resize-none text-[14px] leading-[22px] font-medium text-gray-800 placeholder:text-gray-400 placeholder:font-normal py-2 secure-scrollbar"
+                                style={{ minHeight: '40px', maxHeight: '150px' }}
+                              />
+                            </div>
+                            <button 
+                              type="submit"
+                              disabled={!chatInput.trim() || chatLoading}
+                              className="shrink-0 flex items-center justify-center h-10 w-10 bg-purple-600 text-white rounded-[12px] hover:bg-purple-700 disabled:opacity-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-all shadow-sm"
+                            >
+                              <Send size={18} className="-ml-0.5" />
+                            </button>
+                          </div>
+                        </form>
+                      </div>
                       
-                      {/* Document Chat Separator */}
-                      <div className="pt-8 border-t border-gray-200/60 mt-4 flex-1 flex flex-col">
-                         <div className="text-center mb-6">
-                           <span className="bg-gray-100 text-gray-500 py-1.5 px-4 rounded-full text-[10px] font-bold uppercase tracking-wider">Demic_AI Document Chat</span>
-                         </div>
+                      {/* Document Chat Separator & History */}
+                      <div className="pt-6 mt-2 flex-1 flex flex-col">
+                         {docChatMessages.length > 0 && (
+                           <div className="text-center mb-6">
+                             <span className="bg-gray-100 text-gray-500 py-1.5 px-4 rounded-full text-[10px] font-bold uppercase tracking-wider">Demic_AI Document Chat</span>
+                           </div>
+                         )}
                          
                          <div className="flex-1 space-y-4 pb-4">
-                           {docChatMessages.length === 0 ? (
-                             <div className="text-center text-sm text-gray-400 font-medium italic mt-4">
-                               Ask me a question about any lines, words, or topics confused about in this document...
-                             </div>
-                           ) : (
+                           {docChatMessages.length === 0 ? null : (
                              docChatMessages.map((msg, i) => (
                                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                  <div className={`max-w-[85%] rounded-2xl p-4 shadow-sm text-[13px] leading-relaxed ${
@@ -388,34 +428,6 @@ const SecureViewer: React.FC = () => {
                              </div>
                            )}
                          </div>
-                      </div>
-                      
-                      {/* Chat Input Field (Moved directly below the conversation to follow immediately after info) */}
-                      <div className="shrink-0 bg-transparent py-2">
-                        <form onSubmit={sendDocQuestion} className="flex items-end gap-2 relative">
-                          <div className="flex-1 relative">
-                            <textarea
-                              rows={2}
-                              value={chatInput}
-                              onChange={(e) => setChatInput(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                  e.preventDefault();
-                                  sendDocQuestion();
-                                }
-                              }}
-                              placeholder="Ask about this document..."
-                              className="w-full bg-white shadow-sm border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 resize-none pr-12 font-medium"
-                            />
-                          </div>
-                          <button 
-                            type="submit"
-                            disabled={!chatInput.trim() || chatLoading}
-                            className="absolute right-2 bottom-2 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <Send size={16} />
-                          </button>
-                        </form>
                       </div>
 
                     </div>
