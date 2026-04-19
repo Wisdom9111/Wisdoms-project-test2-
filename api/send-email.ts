@@ -1,14 +1,12 @@
-import { Resend } from 'resend';
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+import nodemailer from 'nodemailer';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!resend) {
-    return res.status(500).json({ error: 'RESEND_API_KEY is missing on Vercel.' });
+  if (!process.env.MOUAU_PORTAL_KEY) {
+    return res.status(500).json({ error: 'MOUAU_PORTAL_KEY is missing in Vercel Environment Variables.' });
   }
 
   const { email, code } = req.body;
@@ -18,9 +16,17 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const data = await resend.emails.send({
-      from: 'MOUAU Portal <onboarding@resend.dev>',
-      to: email, // Resend free tier limits this to your registered email unless custom domains are set up.
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'mouau.portal.verify@gmail.com',
+        pass: process.env.MOUAU_PORTAL_KEY,
+      },
+    });
+
+    const info = await transporter.sendMail({
+      from: '"MOUAU Portal" <mouau.portal.verify@gmail.com>',
+      to: email, // Dynamic email of the registering user
       subject: 'Your MOUAU Portal Verification Code',
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-w: 600px; margin: 0 auto;">
@@ -37,7 +43,7 @@ export default async function handler(req: any, res: any) {
       `,
     });
 
-    return res.status(200).json({ success: true, data });
+    return res.status(200).json({ success: true, messageId: info.messageId });
   } catch (error: any) {
     console.error('Email sending error:', error);
     return res.status(500).json({ error: error.message || 'Error sending email' });

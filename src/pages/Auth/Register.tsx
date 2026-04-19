@@ -38,7 +38,7 @@ const Register: React.FC = () => {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to send verification email. Ensure RESEND_API_KEY is active.');
+        throw new Error('Failed to send verification email. Please check your email address or try again later.');
       }
       
       return true;
