@@ -78,7 +78,7 @@ const StudentDashboard: React.FC = () => {
       const bulletinsRef = collection(db, 'notices');
       const bulletinsQ = query(
         bulletinsRef,
-        where('targetLevel', '==', viewLevel),
+        where('targetLevel', 'in', [viewLevel, 'all']),
         orderBy('createdAt', 'desc')
       );
 
@@ -89,6 +89,18 @@ const StudentDashboard: React.FC = () => {
         })) as Bulletin[];
         setBulletins(data);
       }, (error) => {
+        // If 'in' composite index fails, fallback to manual client filtering
+        if (error.message.includes('index')) {
+            console.warn("Index missing for 'in' query, falling back to client-side filter");
+            const fallbackQ = query(bulletinsRef, orderBy('createdAt', 'desc'));
+            unsubscribeBulletins = onSnapshot(fallbackQ, (fallbackSnap) => {
+                const data = fallbackSnap.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .filter((doc: any) => doc.targetLevel === viewLevel || doc.targetLevel === 'all') as Bulletin[];
+                setBulletins(data);
+            });
+            return;
+        }
         handleFirestoreError(error, OperationType.GET, 'notices');
       });
     } catch (e) {

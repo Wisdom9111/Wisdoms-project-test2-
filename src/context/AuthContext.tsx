@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Role } from '../types';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -34,48 +34,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubscribeSnapshot: () => void;
+    
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const isAdmin = firebaseUser.email?.toLowerCase() === ADMIN_EMAIL;
         const docRef = doc(db, 'users', firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
         
-        if (docSnap.exists()) {
-          const userData = docSnap.data() as User;
-          if (userData.is_suspended && !isAdmin) {
-            // Immediately boot suspended users
-            await signOut(auth);
-            setUser(null);
-          } else {
+        // Listen to the user's DB fields in real-time
+        unsubscribeSnapshot = onSnapshot(docRef, async (docSnap) => {
+          if (docSnap.exists()) {
+            const userData = docSnap.data() as User;
+            
+            // Check for immediate force kick
+            if (userData.force_logout && !isAdmin) {
+              await setDoc(docRef, { force_logout: false, last_active: null }, { merge: true });
+              await signOut(auth);
+              setUser(null);
+              return;
+            }
+
             // Force admin role if matched
             if (isAdmin && userData.role !== 'admin') {
               userData.role = 'admin';
               await setDoc(docRef, { role: 'admin' }, { merge: true });
             }
             
-            // Initial heartbeat pulse
-            try {
-              await setDoc(docRef, { last_active: serverTimestamp() }, { merge: true });
-            } catch (e) {}
-
             setUser(userData);
+          } else {
+            // Fallback if document doesn't exist yet but user is in Auth
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              name: firebaseUser.displayName || (isAdmin ? 'Master Admin' : 'User'),
+              role: isAdmin ? 'admin' : 'student', // Default
+            });
           }
-        } else {
-          // Fallback if document doesn't exist yet but user is in Auth
-          setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            name: firebaseUser.displayName || (isAdmin ? 'Master Admin' : 'User'),
-            role: isAdmin ? 'admin' : 'student', // Default
-          });
-        }
+          setLoading(false);
+        });
+        
+        // Initial heartbeat pulse
+        try {
+          await setDoc(docRef, { last_active: serverTimestamp() }, { merge: true });
+        } catch (e) {}
+
       } else {
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+    };
   }, []);
 
   const login = async (email: string, password: string, role?: Role): Promise<User> => {
@@ -110,10 +123,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let fetchedUser: User;
       if (docSnap.exists()) {
         fetchedUser = docSnap.data() as User;
-
-        if (fetchedUser.is_suspended && !isAdmin) {
-          await signOut(auth);
-          throw new Error("Your account has been suspended by the administrator.");
+        
+        // If force_logout was true but they manage to log in, clear it.
+        if (fetchedUser.force_logout && !isAdmin) {
+          await setDoc(docRef, { force_logout: false }, { merge: true });
         }
         
         // Auto-heal verified property if missing
@@ -164,7 +177,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let firebaseUser;
       let existingRole: Role | undefined = undefined;
       let existingLevel: string | undefined = undefined;
-      let isSuspended = false;
       
       try {
         const res = await createUserWithEmailAndPassword(auth, authEmail, password);
@@ -182,16 +194,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const existingData = docSnap.data() as User;
             existingRole = existingData.role;
             existingLevel = existingData.level;
-            isSuspended = !!existingData.is_suspended;
           }
         } else {
           throw authErr;
         }
-      }
-
-      if (isSuspended && !isAdmin) {
-         await signOut(auth);
-         throw new Error("This account is permanently suspended from registering.");
       }
 
       const finalRole = isAdmin ? 'admin' : (existingRole || role);

@@ -9,6 +9,7 @@ export interface User {
   is_verified?: boolean;
   is_approved?: boolean; // Lecturers require this
   is_suspended?: boolean; // For blocked accounts
+  force_logout?: boolean; // For admin kicking
   last_active?: any; // To track online status
   created_at?: any; // To see session they registered on
 }

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { Search, Trash2, FileText } from 'lucide-react';
+import { Search, Trash2, FileText, BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const AdminMaterials = () => {
   const [materials, setMaterials] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'materials'), (snapshot) => {
@@ -46,7 +48,7 @@ const AdminMaterials = () => {
             placeholder="Search code, title, or author..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 focus:border-mouau-green outline-none transition-colors"
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 focus:border-mouau-green outline-none transition-colors text-gray-900 dark:text-white"
           />
         </div>
       </div>
@@ -85,7 +87,14 @@ const AdminMaterials = () => {
                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                   {mat.createdAt?.toMillis ? new Date(mat.createdAt.toMillis()).toLocaleDateString() : 'N/A'}
                 </td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-6 py-4 text-right flex justify-end gap-2">
+                  <button 
+                    onClick={() => navigate(`/course/${mat.id}`)}
+                    className="p-2 bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-lg transition-colors"
+                    title="Read Document"
+                  >
+                    <BookOpen size={16} />
+                  </button>
                   <button 
                     onClick={() => handleDelete(mat.id, mat.courseTitle)}
                     className="p-2 bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded-lg transition-colors"
