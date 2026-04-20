@@ -82,8 +82,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const authEmail = email.toLowerCase().trim();
       const isAdmin = authEmail === ADMIN_EMAIL;
-      const res = await signInWithEmailAndPassword(auth, authEmail, password);
-      const firebaseUser = res.user;
+      
+      let firebaseUser;
+      try {
+        const res = await signInWithEmailAndPassword(auth, authEmail, password);
+        firebaseUser = res.user;
+      } catch (err: any) {
+        if (isAdmin && (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')) {
+          console.log("Auto-bootstrapping Master Admin account...");
+          const createRes = await createUserWithEmailAndPassword(auth, authEmail, password);
+          firebaseUser = createRes.user;
+        } else {
+          throw err;
+        }
+      }
 
       const docRef = doc(db, 'users', firebaseUser.uid);
       const docSnap = await getDoc(docRef);
