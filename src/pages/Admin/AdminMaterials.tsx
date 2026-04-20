@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { Search, Trash2, FileText, BookOpen } from 'lucide-react';
+import { Search, Trash2, FileText, BookOpen, Edit2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const AdminMaterials = () => {
   const [materials, setMaterials] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+
+  // Edit Modal State
+  const [editingMat, setEditingMat] = useState<any | null>(null);
+  const [editCode, setEditCode] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editLevel, setEditLevel] = useState('');
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'materials'), (snapshot) => {
@@ -24,6 +30,28 @@ const AdminMaterials = () => {
       } catch (err) {
         alert("Failed to delete material.");
       }
+    }
+  };
+
+  const openEditModal = (mat: any) => {
+    setEditingMat(mat);
+    setEditCode(mat.courseCode);
+    setEditTitle(mat.courseTitle);
+    setEditLevel(mat.level);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMat) return;
+    try {
+      await updateDoc(doc(db, 'materials', editingMat.id), {
+        courseCode: editCode,
+        courseTitle: editTitle,
+        level: editLevel
+      });
+      setEditingMat(null);
+    } catch (err) {
+      alert("Failed to update material.");
     }
   };
 
@@ -96,6 +124,13 @@ const AdminMaterials = () => {
                     <BookOpen size={16} />
                   </button>
                   <button 
+                    onClick={() => openEditModal(mat)}
+                    className="p-2 bg-orange-100 text-orange-600 hover:bg-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 rounded-lg transition-colors"
+                    title="Edit Material"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button 
                     onClick={() => handleDelete(mat.id, mat.courseTitle)}
                     className="p-2 bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded-lg transition-colors"
                     title="Permanently Delete Material"
@@ -115,6 +150,69 @@ const AdminMaterials = () => {
           </tbody>
         </table>
       </div>
+
+      {editingMat && (
+        <div className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
+            <div className="bg-gray-50 dark:bg-gray-900 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Edit2 size={18} className="text-mouau-green" /> Edit Material
+              </h3>
+              <button onClick={() => setEditingMat(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleUpdate} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Course Code</label>
+                <input 
+                  type="text" 
+                  value={editCode} 
+                  onChange={(e) => setEditCode(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Course Title</label>
+                <input 
+                  type="text" 
+                  value={editTitle} 
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Target Level</label>
+                <select 
+                  value={editLevel} 
+                  onChange={(e) => setEditLevel(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                >
+                  <option value="100L">100L</option>
+                  <option value="200L">200L</option>
+                  <option value="300L">300L</option>
+                  <option value="400L">400L</option>
+                  <option value="500L">500L</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setEditingMat(null)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 font-bold transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" className="flex-1 px-4 py-2 bg-mouau-green text-white rounded-lg hover:bg-[#00522b] font-bold transition-colors">
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

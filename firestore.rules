@@ -99,7 +99,7 @@ service cloud.firestore {
       return isMasterAdmin() || (
              data.keys().hasAll(['content', 'targetLevel', 'lecturerName', 'lecturerUid', 'createdAt']) &&
              data.content is string && data.content.size() > 0 && data.content.size() < 5000 &&
-             data.targetLevel in ['100L', '200L', '300L', '400L'] &&
+             data.targetLevel in ['100L', '200L', '300L', '400L', '500L', 'all'] &&
              data.lecturerName is string &&
              data.lecturerUid == request.auth.uid &&
              data.createdAt is timestamp
@@ -109,6 +109,11 @@ service cloud.firestore {
     // ===============================================================
     // Rules
     // ===============================================================
+
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isMasterAdmin();
+    }
 
     match /users/{userId} {
       allow read: if isAuthenticated();

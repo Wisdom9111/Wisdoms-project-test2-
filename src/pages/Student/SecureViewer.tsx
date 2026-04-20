@@ -8,6 +8,7 @@ import { Worker, Viewer } from '@react-pdf-viewer/core';
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
+import { useAuth } from '../../context/AuthContext';
 
 const SecureViewer: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +31,14 @@ const SecureViewer: React.FC = () => {
   
   // Document Page state
   const [initialPage, setInitialPage] = useState(0);
+
+  const { user } = useAuth();
+  
+  const handleBack = () => {
+    if (user?.role === 'admin') navigate('/admin-dashboard/materials');
+    else if (user?.role === 'lecturer') navigate('/lecturer-dashboard');
+    else navigate('/student-dashboard');
+  };
 
   // Auto-resize chat textarea
   useEffect(() => {
@@ -94,6 +103,13 @@ const SecureViewer: React.FC = () => {
       unsubscribe();
     };
   }, [id]);
+
+  useEffect(() => {
+    // If the material is loaded but hasn't been analyzed and we opened the panel, force analyze.
+    if (isAiPanelOpen && material && !aiAnalysis && !aiLoading) {
+      generateAiSummary();
+    }
+  }, [isAiPanelOpen, material, aiAnalysis, aiLoading]);
 
   const generateAiSummary = async () => {
     if (!material) return;
@@ -204,7 +220,7 @@ const SecureViewer: React.FC = () => {
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50 text-center">
         <AlertTriangle size={48} className="text-red-500 mb-4" />
         <h2 className="text-2xl font-serif font-bold text-gray-900">{error}</h2>
-        <button onClick={() => navigate('/student-dashboard')} className="mt-6 text-mouau-green font-bold underline">
+        <button onClick={handleBack} className="mt-6 text-mouau-green font-bold underline">
           Return to Dashboard
         </button>
       </div>
@@ -217,7 +233,7 @@ const SecureViewer: React.FC = () => {
       <header className="bg-white px-2 sm:px-6 py-4 flex items-center justify-between border-b border-gray-100 z-30">
         <div className="flex items-center gap-2 sm:gap-6">
           <button 
-            onClick={() => navigate('/student-dashboard')}
+            onClick={handleBack}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors text-mouau-green"
           >
             <ArrowLeft size={20} />

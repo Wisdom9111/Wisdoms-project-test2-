@@ -237,7 +237,7 @@ const Login: React.FC = () => {
                     <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
                       <CheckCircle size={32} />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">Check Your Inbox</h3>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">Check Your Inbox/Spam</h3>
                     <p className="text-gray-600">
                       We've sent a secure password reset link to <strong>{forgotEmail}</strong>. Click the link in the email to set your new password.
                     </p>
@@ -291,7 +291,7 @@ const Login: React.FC = () => {
                             Sending...
                           </>
                         ) : (
-                          'Send Reset Link'
+                          'Send Reset Code'
                         )}
                       </button>
                     </form>

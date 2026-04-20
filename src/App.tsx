@@ -139,7 +139,7 @@ const AppContent = () => {
           </ProtectedRoute>
         } />
         <Route path="/course/:id" element={
-          <ProtectedRoute allowedRole="student">
+          <ProtectedRoute allowedRoles={['student', 'admin', 'lecturer']}>
             <SecureViewer />
           </ProtectedRoute>
         } />
