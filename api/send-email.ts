@@ -9,11 +9,22 @@ export default async function handler(req: any, res: any) {
     return res.status(500).json({ error: 'MOUAU_PORTAL_KEY is missing in Vercel Environment Variables.' });
   }
 
-  const { email, code } = req.body;
+  const { email, code, type } = req.body;
 
   if (!email || !code) {
     return res.status(400).json({ error: 'Email and verification code are required' });
   }
+
+  const isReset = type === 'reset';
+  const subject = isReset 
+    ? 'Your MOUAU Password Reset Code' 
+    : 'Your MOUAU Portal Verification Code';
+  const introText = isReset
+    ? 'You recently requested to reset your password for the MOUAU Courseware Portal.'
+    : 'You recently requested to register for the MOUAU Courseware Management System.';
+  const footerText = isReset
+    ? 'Please enter this exact code securely to create a new password.'
+    : 'Please enter this exact code in the portal to complete your registration securely.';
 
   try {
     const transporter = nodemailer.createTransport({
@@ -26,19 +37,19 @@ export default async function handler(req: any, res: any) {
 
     const info = await transporter.sendMail({
       from: '"MOUAU Portal" <mouau.portal.verify@gmail.com>',
-      to: email, // Dynamic email of the registering user
-      subject: 'Your MOUAU Portal Verification Code',
+      to: email, 
+      subject: subject,
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-w: 600px; margin: 0 auto;">
           <h2 style="color: #006837;">MOUAU Courseware Portal Verification</h2>
-          <p style="color: #444; font-size: 16px;">You recently requested to register for the MOUAU Courseware Management System.</p>
+          <p style="color: #444; font-size: 16px;">${introText}</p>
           <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 30px 0; border: 1px solid #e2e8f0;">
             <p style="margin: 0; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Your Verification Code</p>
             <p style="margin: 10px 0 0; font-size: 32px; font-family: monospace; font-weight: bold; color: #1a1a1a;">${code}</p>
           </div>
-          <p style="color: #444; font-size: 14px;">Please enter this exact code in the portal to complete your registration securely.</p>
+          <p style="color: #444; font-size: 14px;">${footerText}</p>
           <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
-          <p style="font-size: 12px; color: #888;">If you did not request this verification, please ignore this email.</p>
+          <p style="font-size: 12px; color: #888;">If you did not request this, please ignore this email securely.</p>
         </div>
       `,
     });
