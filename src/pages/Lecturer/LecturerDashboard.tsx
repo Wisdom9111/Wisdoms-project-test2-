@@ -138,22 +138,22 @@ const LecturerDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
-      <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-gray-950 transition-colors">
+      <nav className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-10 transition-colors">
         <div className="flex items-center gap-2">
           <div className="bg-[#006837] p-2 rounded-lg text-white">
             <LayoutDashboard size={20} />
           </div>
-          <span className="text-xl font-bold text-[#006837]">MOUAU Lecturer Portal</span>
+          <span className="text-xl font-bold text-[#006837] dark:text-green-400">MOUAU Lecturer Portal</span>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right mr-2 hidden sm:block">
-            <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
-            <p className="text-xs text-gray-500">MOUAU Academic Staff</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">{user?.name}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">MOUAU Academic Staff</p>
           </div>
           <button 
             onClick={handleLogout}
-            className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+            className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
           >
             <LogOut size={20} />
           </button>
@@ -161,10 +161,10 @@ const LecturerDashboard: React.FC = () => {
       </nav>
 
       <main className="max-w-7xl mx-auto p-6 space-y-8">
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-8">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-800 pb-8">
           <div>
-            <h1 className="text-4xl font-serif font-bold text-mouau-green tracking-tight">Welcome, {user?.name}</h1>
-            <p className="text-gray-500 mt-2 font-medium">Manage your courseware and student resources.</p>
+            <h1 className="text-4xl font-serif font-bold text-mouau-green dark:text-green-400 tracking-tight">Welcome, {user?.name}</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">Manage your courseware and student resources.</p>
           </div>
           <button 
             onClick={() => navigate('/upload')}
@@ -177,13 +177,13 @@ const LecturerDashboard: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {stats.map((stat) => (
-            <div key={stat.label} className="bg-white p-8 rounded-[4px] shadow-sm border border-gray-100 flex items-center gap-6 group hover:border-mouau-green/30 transition-colors">
+            <div key={stat.label} className="bg-white dark:bg-gray-900 p-8 rounded-[4px] shadow-sm border border-gray-100 dark:border-gray-800 flex items-center gap-6 group hover:border-mouau-green/30 dark:hover:border-green-400/30 transition-colors">
               <div className={`${stat.color} p-4 rounded-full group-hover:scale-110 transition-transform`}>
                 <stat.icon size={28} />
               </div>
               <div>
-                <p className="text-[12px] font-bold text-[#666666] uppercase tracking-wider">{stat.label}</p>
-                <p className="text-3xl font-serif font-bold text-[#1a1a1a] mt-1">{stat.value}</p>
+                <p className="text-[12px] font-bold text-[#666666] dark:text-gray-400 uppercase tracking-wider">{stat.label}</p>
+                <p className="text-3xl font-serif font-bold text-[#1a1a1a] dark:text-white mt-1">{stat.value}</p>
               </div>
             </div>
           ))}
@@ -191,39 +191,39 @@ const LecturerDashboard: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white rounded-[4px] shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                <h2 className="font-serif font-bold text-xl text-[#1a1a1a]">Your Recent Uploads</h2>
+            <div className="bg-white dark:bg-gray-900 rounded-[4px] shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="px-8 py-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50">
+                <h2 className="font-serif font-bold text-xl text-[#1a1a1a] dark:text-white">Your Recent Uploads</h2>
               </div>
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
                 {loading ? (
-                  <div className="p-8 text-center text-gray-400">Loading your materials...</div>
+                  <div className="p-8 text-center text-gray-400 dark:text-gray-500">Loading your materials...</div>
                 ) : recentUploads.length === 0 ? (
-                  <div className="p-12 text-center text-gray-400">
+                  <div className="p-12 text-center text-gray-400 dark:text-gray-500">
                     <FileText size={48} className="mx-auto mb-4 opacity-20" />
                     <p>You haven't uploaded any materials yet.</p>
                   </div>
                 ) : (
                   recentUploads.map((material) => (
-                    <div key={material.id} className="px-8 py-5 flex items-center justify-between hover:bg-gray-50 transition-colors group">
+                    <div key={material.id} className="px-8 py-5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
                       <div className="flex items-center gap-6">
-                        <div className="w-12 h-12 bg-mouau-green/10 text-mouau-green rounded-[4px] flex items-center justify-center font-bold text-xs border border-mouau-green/20 group-hover:bg-mouau-green group-hover:text-white transition-colors uppercase">
+                        <div className="w-12 h-12 bg-mouau-green/10 dark:bg-green-400/10 text-mouau-green dark:text-green-400 rounded-[4px] flex items-center justify-center font-bold text-xs border border-mouau-green/20 dark:border-green-400/20 group-hover:bg-mouau-green group-hover:text-white transition-colors uppercase">
                           PDF
                         </div>
                         <div>
-                          <h3 className="font-serif font-bold text-lg text-[#1a1a1a] group-hover:text-mouau-green transition-colors">{material.courseCode} - {material.courseTitle}</h3>
-                          <p className="text-sm text-gray-500 mt-0.5">Target: {material.level} • {material.semester} Semester</p>
+                          <h3 className="font-serif font-bold text-lg text-[#1a1a1a] dark:text-white group-hover:text-mouau-green dark:group-hover:text-green-400 transition-colors">{material.courseCode} - {material.courseTitle}</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Target: {material.level} • {material.semester} Semester</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
                         <button 
                           onClick={() => setDeleteId(material.id)}
-                          className="p-2 text-gray-300 hover:text-red-600 transition-colors rounded-full hover:bg-red-50"
+                          className="p-2 text-gray-300 dark:text-gray-600 hover:text-red-600 dark:hover:text-red-400 transition-colors rounded-full hover:bg-red-50 dark:hover:bg-red-900/20"
                           title="Delete Material"
                         >
                           <Trash2 size={18} />
                         </button>
-                        <a href={material.fileUrl} target="_blank" rel="noreferrer" className="text-gray-300 hover:text-mouau-green transition-colors">
+                        <a href={material.fileUrl} target="_blank" rel="noreferrer" className="text-gray-300 dark:text-gray-600 hover:text-mouau-green dark:hover:text-green-400 transition-colors">
                           <ChevronRight size={20} />
                         </a>
                       </div>
@@ -235,8 +235,8 @@ const LecturerDashboard: React.FC = () => {
           </div>
 
           <div className="space-y-8">
-            <div className="bg-white rounded-[4px] shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-8 py-5 border-b border-gray-100 bg-mouau-green text-white">
+            <div className="bg-white dark:bg-gray-900 rounded-[4px] shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="px-8 py-5 border-b border-gray-100 dark:border-gray-800 bg-mouau-green dark:bg-[#004d28] text-white">
                 <h2 className="font-serif font-bold text-xl flex items-center gap-2">
                   <Bell size={20} />
                   Post Internal Bulletin
@@ -244,21 +244,21 @@ const LecturerDashboard: React.FC = () => {
               </div>
               <form onSubmit={handlePostBulletin} className="p-8 space-y-5">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-[#666666] uppercase tracking-widest block">Bulletin Message</label>
+                  <label className="text-[11px] font-bold text-[#666666] dark:text-gray-400 uppercase tracking-widest block">Bulletin Message</label>
                   <textarea
                     required
                     value={bulletin.content}
                     onChange={e => setBulletin({ ...bulletin, content: e.target.value })}
                     placeholder="Enter academic notice or bulletin details..."
-                    className="w-full h-32 px-4 py-3 border border-gray-200 rounded-[4px] outline-none focus:border-mouau-green transition-all bg-gray-50/50 resize-none font-medium"
+                    className="w-full h-32 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-[4px] outline-none focus:border-mouau-green dark:focus:border-green-400 transition-all bg-gray-50/50 dark:bg-gray-800 resize-none font-medium dark:text-white"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-[#666666] uppercase tracking-widest block">Target Student Level</label>
+                  <label className="text-[11px] font-bold text-[#666666] dark:text-gray-400 uppercase tracking-widest block">Target Student Level</label>
                   <select
                     value={bulletin.level}
                     onChange={e => setBulletin({ ...bulletin, level: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-[4px] outline-none focus:border-mouau-green bg-white font-bold italic"
+                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-[4px] outline-none focus:border-mouau-green dark:focus:border-green-400 bg-white dark:bg-gray-800 font-bold italic dark:text-white"
                   >
                     {['100L', '200L', '300L', '400L'].map(l => (
                       <option key={l} value={l}>{l}</option>
@@ -268,7 +268,7 @@ const LecturerDashboard: React.FC = () => {
                 <button
                   type="submit"
                   disabled={bulletinLoading}
-                  className={`w-full py-4 rounded-[4px] font-bold text-white shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-widest text-[12px] ${bulletinLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-mouau-green hover:bg-[#00522b]'}`}
+                  className={`w-full py-4 rounded-[4px] font-bold text-white shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 uppercase tracking-widest text-[12px] ${bulletinLoading ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed' : 'bg-mouau-green hover:bg-[#00522b] dark:bg-green-600 dark:hover:bg-green-700'}`}
                 >
                   {bulletinLoading ? 'Broadcasting...' : 'Broadcast Notice'}
                 </button>

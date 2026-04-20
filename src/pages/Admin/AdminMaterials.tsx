@@ -14,6 +14,7 @@ const AdminMaterials = () => {
   const [editCode, setEditCode] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [editLevel, setEditLevel] = useState('');
+  const [editSemester, setEditSemester] = useState('');
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'materials'), (snapshot) => {
@@ -38,6 +39,7 @@ const AdminMaterials = () => {
     setEditCode(mat.courseCode);
     setEditTitle(mat.courseTitle);
     setEditLevel(mat.level);
+    setEditSemester(mat.semester || 'First');
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -47,7 +49,8 @@ const AdminMaterials = () => {
       await updateDoc(doc(db, 'materials', editingMat.id), {
         courseCode: editCode,
         courseTitle: editTitle,
-        level: editLevel
+        level: editLevel,
+        semester: editSemester
       });
       setEditingMat(null);
     } catch (err) {
@@ -118,24 +121,27 @@ const AdminMaterials = () => {
                 <td className="px-6 py-4 text-right flex justify-end gap-2">
                   <button 
                     onClick={() => navigate(`/course/${mat.id}`)}
-                    className="p-2 bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-lg transition-colors"
+                    className="px-3 py-1.5 flex items-center gap-1.5 bg-blue-100/50 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 rounded-lg transition-colors font-bold text-[11px] uppercase tracking-wider"
                     title="Read Document"
                   >
-                    <BookOpen size={16} />
+                    <BookOpen size={14} />
+                    Read
                   </button>
                   <button 
                     onClick={() => openEditModal(mat)}
-                    className="p-2 bg-orange-100 text-orange-600 hover:bg-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 rounded-lg transition-colors"
+                    className="px-3 py-1.5 flex items-center gap-1.5 bg-orange-100/50 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-400 rounded-lg transition-colors font-bold text-[11px] uppercase tracking-wider"
                     title="Edit Material"
                   >
-                    <Edit2 size={16} />
+                    <Edit2 size={14} />
+                    Edit
                   </button>
                   <button 
                     onClick={() => handleDelete(mat.id, mat.courseTitle)}
-                    className="p-2 bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded-lg transition-colors"
+                    className="px-3 py-1.5 flex items-center gap-1.5 bg-red-100/50 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 rounded-lg transition-colors font-bold text-[11px] uppercase tracking-wider"
                     title="Permanently Delete Material"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={14} />
+                    Delete
                   </button>
                 </td>
               </tr>
@@ -186,19 +192,33 @@ const AdminMaterials = () => {
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Target Level</label>
-                <select 
-                  value={editLevel} 
-                  onChange={(e) => setEditLevel(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                >
-                  <option value="100L">100L</option>
-                  <option value="200L">200L</option>
-                  <option value="300L">300L</option>
-                  <option value="400L">400L</option>
-                  <option value="500L">500L</option>
-                </select>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Target Level</label>
+                  <select 
+                    value={editLevel} 
+                    onChange={(e) => setEditLevel(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
+                    <option value="100L">100L</option>
+                    <option value="200L">200L</option>
+                    <option value="300L">300L</option>
+                    <option value="400L">400L</option>
+                    <option value="500L">500L</option>
+                  </select>
+                </div>
+                
+                <div className="flex-1">
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Semester</label>
+                  <select 
+                    value={editSemester} 
+                    onChange={(e) => setEditSemester(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
+                    <option value="First">First</option>
+                    <option value="Second">Second</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-4">
