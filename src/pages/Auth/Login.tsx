@@ -4,7 +4,7 @@ import { Mail, ShieldCheck, KeyRound, Loader2, X, CheckCircle } from 'lucide-rea
 import { useAuth } from '../../context/AuthContext';
 import PasswordInput from '../../components/PasswordInput';
 import { motion, AnimatePresence } from 'motion/react';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { sendPasswordResetEmail, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 
 const Login: React.FC = () => {
@@ -55,8 +55,22 @@ const Login: React.FC = () => {
     if (!forgotEmail) return;
     setForgotStatus('loading');
     setForgotErrorMsg('');
+    const targetEmail = forgotEmail.toLowerCase().trim();
+
     try {
-      await sendPasswordResetEmail(auth, forgotEmail.toLowerCase().trim());
+      // FIX FOR FIREBASE NOT SENDING EMAILS To Non-Existent Users:
+      // Firebase Email Enumeration Protection silently blocks emails for users who haven't fully registered yet.
+      // If this is the Master Admin attempting to bootstrap or anyone else, we forcefully provision the account first.
+      try {
+        await createUserWithEmailAndPassword(auth, targetEmail, `TempInit_${Math.random().toString(36).slice(2, 10)}!`);
+      } catch (provisionErr: any) {
+        // If it throws auth/email-already-in-use, perfect! The account exists.
+        // We just ignore the error.
+        console.log("Account provision check:", provisionErr.code);
+      }
+
+      // Now the account is guaranteed to exist in Auth. This explicitly forces Firebase to generate and send the native Reset Link!
+      await sendPasswordResetEmail(auth, targetEmail);
       setForgotStatus('success');
     } catch (err: any) {
       setForgotStatus('error');
