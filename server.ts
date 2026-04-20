@@ -164,7 +164,7 @@ async function startServer() {
 
       // 2. Pass to Gemini API
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: {
           parts: [
             {
@@ -239,7 +239,7 @@ Return ONLY valid JSON.`
 
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: `You are Demic_AI, an expert academic assistant for Michael Okpara University of Agriculture, Umudike (MOUAU).
 
 STUDENT OUESTION: "${query}"
@@ -340,7 +340,7 @@ INSTRUCTIONS:
       }
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: { parts }
       });
 

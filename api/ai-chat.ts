@@ -15,7 +15,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: `You are Demic_AI, an expert academic assistant for Michael Okpara University of Agriculture, Umudike (MOUAU).
 
 STUDENT OUESTION: "${query}"
