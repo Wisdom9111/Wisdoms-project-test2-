@@ -71,7 +71,7 @@ INSTRUCTIONS:
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: { parts }
     });
 
@@ -80,13 +80,16 @@ INSTRUCTIONS:
 
   } catch (error: any) {
     const isInvalidKey = error?.status === 400 || error?.message?.includes('API key') || error?.message?.includes('API_KEY_INVALID');
-    if (!isInvalidKey) console.error("AI Doc Chat Error:", error);
+    if (!isInvalidKey) {
+      console.error("AI Doc Chat Error Details:", error?.message, error?.stack);
+      console.error("AI Doc Chat Full Error:", JSON.stringify(error, null, 2));
+    }
     else console.warn("AI Doc Chat Warning: Missing or Invalid API Key.");
 
     return res.status(200).json({ 
       answer: isInvalidKey 
         ? "⚠️ **API Configuration Error**\nYour Gemini API key is missing or invalid. Please check Vercel environment variables." 
-        : "Sorry, I encountered an error while processing this request. Please try again."
+        : `Sorry, I encountered an error while processing this request: ${error?.message || 'Unknown error'}. Please try again.`
     });
   }
 }

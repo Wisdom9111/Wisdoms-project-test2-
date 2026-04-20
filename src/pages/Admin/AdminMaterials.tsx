@@ -84,8 +84,8 @@ const AdminMaterials = () => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <table className="w-full text-left">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto w-full">
+        <table className="w-full text-left min-w-[800px]">
           <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
             <tr>
               <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Course</th>
