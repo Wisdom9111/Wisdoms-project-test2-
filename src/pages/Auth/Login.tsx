@@ -18,15 +18,8 @@ const Login: React.FC = () => {
   // Forgot Password feature state
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotStep, setForgotStep] = useState<'email' | 'code' | 'new_password'>('email');
   const [forgotStatus, setForgotStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [forgotErrorMsg, setForgotErrorMsg] = useState('');
-  
-  // Storage for multi-step reset
-  const [generatedCode, setGeneratedCode] = useState('');
-  const [inputCode, setInputCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,73 +50,21 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleSendResetCode = async (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotEmail) return;
     setForgotStatus('loading');
     setForgotErrorMsg('');
-
     try {
-      // Generate MOUAU_RESET code
-      const code = `MOUAU_RESET_${Math.floor(100000 + Math.random() * 900000)}`;
-      setGeneratedCode(code);
-
-      // Send the code to the user's email
-      const response = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail.toLowerCase().trim(), code, type: 'reset' }),
-      });
-
-      if (!response.ok) {
-         throw new Error("Failed to send reset code to your email. Check your connection.");
+      await sendPasswordResetEmail(auth, forgotEmail.toLowerCase().trim());
+      setForgotStatus('success');
+    } catch (err: any) {
+      setForgotStatus('error');
+      if (err.code === 'auth/user-not-found') {
+        setForgotErrorMsg("No account found with this email.");
+      } else {
+        setForgotErrorMsg(err.message || "Failed to send reset email.");
       }
-
-      setForgotStep('code');
-      setForgotStatus('idle');
-    } catch (err: any) {
-      setForgotStatus('error');
-      setForgotErrorMsg(err.message || "Failed to send reset code.");
-    }
-  };
-
-  const handleVerifyCode = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputCode.trim() !== generatedCode) {
-      setForgotStatus('error');
-      setForgotErrorMsg("Invalid reset code. Please check your email and try again.");
-      return;
-    }
-    setForgotStatus('idle');
-    setForgotErrorMsg('');
-    setForgotStep('new_password');
-  };
-
-  const handleResetPasswordFinal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      setForgotStatus('error');
-      setForgotErrorMsg("The passwords are incorrect (they do not match).");
-      return;
-    }
-    
-    setForgotStatus('loading');
-    setForgotErrorMsg('');
-
-    try {
-      // EXPLANATION: We cannot use Firebase updatePassword here without the user currently being authenticated.
-      // Therefore, if they are the admin and got locked out, this is a simulated error specifically guiding them to use the bypass.
-      setTimeout(() => {
-         setForgotStatus('error');
-         setForgotErrorMsg("Firebase Security Guard: Changing passwords via custom code is blocked for unauthenticated users. Please check your email for the official Google Firebase Reset Link we just sent you instead.");
-         
-         // Trigger the official firebase mail invisibly as a fallback
-         sendPasswordResetEmail(auth, forgotEmail.toLowerCase().trim()).catch(() => {});
-      }, 1500);
-      
-    } catch (err: any) {
-      setForgotStatus('error');
-      setForgotErrorMsg("Error completing password reset.");
     }
   };
 
@@ -277,18 +218,34 @@ const Login: React.FC = () => {
               </div>
 
               <div className="p-6">
-                {forgotStep === 'email' && (
+                {forgotStatus === 'success' ? (
+                  <div className="text-center py-4">
+                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle size={32} />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">Check Your Inbox</h3>
+                    <p className="text-gray-600">
+                      We've sent a secure password reset link to <strong>{forgotEmail}</strong>. Click the link in the email to set your new password.
+                    </p>
+                    <button
+                      onClick={() => setShowForgotModal(false)}
+                      className="mt-6 w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200 transition-colors"
+                    >
+                      Back to Sign In
+                    </button>
+                  </div>
+                ) : (
                   <>
                     <div className="text-center mb-6">
                       <div className="w-12 h-12 bg-mouau-green/10 text-mouau-green rounded-full flex items-center justify-center mx-auto mb-4">
                         <Mail size={24} />
                       </div>
                       <p className="text-gray-600 text-sm">
-                        Enter your university email address and we'll send you a custom code to reset your password.
+                        Enter your university email address and we'll send you a secure link to reset your password.
                       </p>
                     </div>
 
-                    <form onSubmit={handleSendResetCode} className="space-y-4">
+                    <form onSubmit={handleForgotPassword} className="space-y-4">
                       {forgotStatus === 'error' && (
                         <div className="bg-red-50 text-red-600 text-sm font-bold p-3 rounded border border-red-100 text-center">
                           {forgotErrorMsg}
@@ -320,101 +277,7 @@ const Login: React.FC = () => {
                             Sending...
                           </>
                         ) : (
-                          'Send Reset Code'
-                        )}
-                      </button>
-                    </form>
-                  </>
-                )}
-
-                {forgotStep === 'code' && (
-                  <>
-                    <div className="text-center mb-6">
-                      <div className="w-12 h-12 bg-mouau-green/10 text-mouau-green rounded-full flex items-center justify-center mx-auto mb-4">
-                        <ShieldCheck size={24} />
-                      </div>
-                      <h3 className="text-xl font-bold text-gray-800 mb-2">Verify Your Code</h3>
-                      <p className="text-gray-600 text-sm">
-                        Insert the code sent to you at <strong>{forgotEmail}</strong>
-                      </p>
-                    </div>
-
-                    <form onSubmit={handleVerifyCode} className="space-y-4">
-                      {forgotStatus === 'error' && (
-                        <div className="bg-red-50 text-red-600 text-sm font-bold p-3 rounded border border-red-100 text-center">
-                          {forgotErrorMsg}
-                        </div>
-                      )}
-
-                      <div className="space-y-2">
-                        <label className="text-[12px] font-bold text-gray-600 uppercase tracking-widest block">
-                          Reset Code
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={inputCode}
-                          onChange={(e) => setInputCode(e.target.value)}
-                          placeholder="MOUAU_RESET_xxxxxx"
-                          className="w-full px-4 py-3 bg-gray-50 border-[1.5px] border-gray-200 rounded-lg outline-none focus:border-mouau-green focus:bg-white transition-all text-[15px] font-mono text-center tracking-widest"
-                        />
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="w-full bg-mouau-green text-white py-3.5 rounded-lg font-bold hover:bg-[#00522b] transition-all flex justify-center items-center gap-2"
-                      >
-                        Verify Code
-                      </button>
-                    </form>
-                  </>
-                )}
-
-                {forgotStep === 'new_password' && (
-                  <>
-                    <div className="text-center mb-6">
-                      <div className="w-12 h-12 bg-mouau-green/10 text-mouau-green rounded-full flex items-center justify-center mx-auto mb-4">
-                        <KeyRound size={24} />
-                      </div>
-                      <h3 className="text-xl font-bold text-gray-800 mb-2">Create New Password</h3>
-                    </div>
-
-                    <form onSubmit={handleResetPasswordFinal} className="space-y-4">
-                      {forgotStatus === 'error' && (
-                        <div className="bg-red-50 text-red-600 text-sm font-bold p-3 rounded border border-red-100 text-left leading-relaxed">
-                          {forgotErrorMsg}
-                        </div>
-                      )}
-
-                      <div className="space-y-4">
-                        <PasswordInput
-                          label="New Password"
-                          required
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="Input your new password"
-                        />
-                        <PasswordInput
-                          label="Confirm Password"
-                          required
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          placeholder="Please confirm your password"
-                        />
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={forgotStatus === 'loading'}
-                        className="w-full bg-mouau-green text-white py-3.5 rounded-lg font-bold hover:bg-[#00522b] disabled:opacity-50 transition-all flex justify-center items-center gap-2 mt-4"
-                      >
-                        {forgotStatus === 'loading' ? (
-                          <>
-                            <Loader2 className="animate-spin" size={18} />
-                            Authenticating...
-                          </>
-                        ) : (
-                          'Reset Password'
+                          'Send Reset Link'
                         )}
                       </button>
                     </form>
