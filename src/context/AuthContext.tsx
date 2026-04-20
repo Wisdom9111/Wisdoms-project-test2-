@@ -90,8 +90,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err: any) {
         if (isAdmin && (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')) {
           console.log("Auto-bootstrapping Master Admin account...");
-          const createRes = await createUserWithEmailAndPassword(auth, authEmail, password);
-          firebaseUser = createRes.user;
+          try {
+            const createRes = await createUserWithEmailAndPassword(auth, authEmail, password);
+            firebaseUser = createRes.user;
+          } catch (createErr: any) {
+            if (createErr.code === 'auth/email-already-in-use') {
+              throw new Error("Admin password incorrect. The account exists, but this isn't the right password. Please click 'Forgot Password'.");
+            }
+            throw createErr;
+          }
         } else {
           throw err;
         }
